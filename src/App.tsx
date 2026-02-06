@@ -3,12 +3,16 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { JudgeDemoMode } from "@/components/JudgeDemoMode";
 import DocumentCompression from "./pages/DocumentCompression";
 import RetrievalAudit from "./pages/RetrievalAudit";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import VerifiedProfile from "./pages/VerifiedProfile";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,16 +23,57 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <DashboardLayout>
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<DocumentCompression />} />
-            <Route path="/retrieval-audit" element={<RetrievalAudit />} />
-            <Route path="/analytics" element={<AnalyticsDashboard />} />
-            <Route path="/profile" element={<VerifiedProfile />} />
+            {/* Public auth routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <DocumentCompression />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/retrieval-audit"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <RetrievalAudit />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <AnalyticsDashboard />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <VerifiedProfile />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </DashboardLayout>
-        <JudgeDemoMode />
+          <JudgeDemoMode />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

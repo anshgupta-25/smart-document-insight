@@ -1,167 +1,87 @@
+import { useAuth } from "@/hooks/useAuth";
 import {
-  User, GraduationCap, Trophy, Code2, Wrench, FolderGit2, Award,
-  MapPin, Calendar, ExternalLink
+  User, Mail, Shield, Clock, LogOut, Loader2
 } from "lucide-react";
 
-const profile = {
-  name: "Ansh Gupta",
-  education: [
-    {
-      institution: "Lovely Professional University",
-      program: "GEN-AI",
-      period: "2024–2028",
-      score: "CGPA 8.20",
-    },
-    {
-      institution: "Delhi Public School, Roorkee",
-      program: "PCM",
-      period: "School",
-      score: "85%",
-    },
-  ],
-  achievements: [
-    "HackXlerate 2025 Finalist (Top 7 of 1000+)",
-    "Google Cloud Arcade Legend (400+ labs, 50+ badges)",
-    "500+ DSA problems (ByteXL)",
-  ],
-  skills: {
-    languages: ["Python", "C++", "Java", "SQL", "JavaScript", "HTML/CSS"],
-    frameworks: ["Flask", "FastAPI", "React", "Node.js", "Docker", "Kubernetes"],
-    aiTools: ["LangChain", "Selenium", "Playwright", "Ollama"],
-    cloud: ["Azure", "GCP", "Oracle Cloud", "Git", "CI/CD"],
-  },
-  projects: [
-    "Web Navigator AI Agent",
-    "Customer Service Chatbot",
-    "Speech-to-Text Tool",
-  ],
-  certifications: [
-    "Microsoft AI-900",
-    "Microsoft AZ-900",
-    "Oracle OCI AI Foundations",
-    "Google Cloud Arcade",
-    "HackerRank Python",
-  ],
-};
+export default function VerifiedProfile() {
+  const { user, signOut } = useAuth();
 
-function SectionCard({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: React.ElementType;
-  title: string;
-  children: React.ReactNode;
-}) {
+  if (!user) return null;
+
+  const provider = user.app_metadata?.provider || "email";
+  const email = user.email || "—";
+  const displayName = user.user_metadata?.full_name || user.user_metadata?.name || email.split("@")[0];
+  const avatarUrl = user.user_metadata?.avatar_url;
+  const lastSignIn = user.last_sign_in_at
+    ? new Date(user.last_sign_in_at).toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "—";
+
+  const handleLogout = async () => {
+    await signOut();
+  };
+
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
-        <Icon className="w-4 h-4 text-primary" />
-        {title}
-      </h3>
-      {children}
+    <div className="p-6 max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={displayName}
+            className="w-14 h-14 rounded-2xl object-cover border-2 border-primary/30 shadow-glow"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-primary shadow-glow shrink-0">
+            <User className="w-7 h-7 text-primary-foreground" />
+          </div>
+        )}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{displayName}</h1>
+          <p className="text-sm text-muted-foreground">Authenticated User Profile</p>
+        </div>
+      </div>
+
+      {/* Info Card */}
+      <div className="rounded-xl border border-border bg-card p-6 shadow-card space-y-5">
+        <InfoRow icon={Mail} label="Email" value={email} />
+        <InfoRow icon={Shield} label="Auth Provider" value={provider.charAt(0).toUpperCase() + provider.slice(1)} />
+        <InfoRow icon={Clock} label="Last Sign In" value={lastSignIn} />
+        <InfoRow icon={User} label="User ID" value={user.id.slice(0, 8) + "…"} mono />
+      </div>
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="flex items-center justify-center gap-2 w-full h-11 rounded-lg border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors"
+      >
+        <LogOut className="w-4 h-4" />
+        Sign Out
+      </button>
     </div>
   );
 }
 
-function SkillBadge({ label }: { label: string }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  mono = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-accent text-accent-foreground border border-border">
-      {label}
-    </span>
-  );
-}
-
-export default function VerifiedProfile() {
-  return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-primary shadow-glow shrink-0">
-          <User className="w-7 h-7 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{profile.name}</h1>
-          <p className="text-sm text-muted-foreground">Verified Profile · Source of Truth</p>
-        </div>
+    <div className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <Icon className="w-4 h-4 text-primary" />
+        {label}
       </div>
-
-      {/* Education */}
-      <SectionCard icon={GraduationCap} title="Education">
-        <div className="space-y-3">
-          {profile.education.map((edu, i) => (
-            <div key={i} className="flex items-start justify-between gap-4 p-3 rounded-lg bg-secondary/50">
-              <div>
-                <p className="text-sm font-medium text-foreground">{edu.institution}</p>
-                <p className="text-xs text-muted-foreground">{edu.program}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-mono text-primary">{edu.score}</p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
-                  <Calendar className="w-3 h-3" />
-                  {edu.period}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-
-      {/* Achievements */}
-      <SectionCard icon={Trophy} title="Achievements">
-        <ul className="space-y-2">
-          {profile.achievements.map((a, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-secondary-foreground">
-              <span className="text-primary font-mono text-xs mt-0.5">{String(i + 1).padStart(2, "0")}</span>
-              {a}
-            </li>
-          ))}
-        </ul>
-      </SectionCard>
-
-      {/* Skills */}
-      <SectionCard icon={Code2} title="Skills">
-        <div className="space-y-4">
-          {Object.entries(profile.skills).map(([category, items]) => (
-            <div key={category}>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                {category === "aiTools" ? "AI & Automation" : category}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {items.map((skill) => (
-                  <SkillBadge key={skill} label={skill} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Projects */}
-        <SectionCard icon={FolderGit2} title="Projects">
-          <ul className="space-y-2">
-            {profile.projects.map((p, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm text-secondary-foreground">
-                <Wrench className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                {p}
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
-
-        {/* Certifications */}
-        <SectionCard icon={Award} title="Certifications">
-          <ul className="space-y-2">
-            {profile.certifications.map((c, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm text-secondary-foreground">
-                <Award className="w-3.5 h-3.5 text-primary shrink-0" />
-                {c}
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
-      </div>
+      <span className={`text-sm text-foreground ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }

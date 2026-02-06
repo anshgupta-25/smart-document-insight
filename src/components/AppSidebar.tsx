@@ -27,8 +27,8 @@ export function AppSidebar() {
         </div>
         {!collapsed && (
           <div className="animate-fade-in">
-            <h1 className="text-sm font-semibold text-foreground tracking-tight">DocIntel</h1>
-            <p className="text-[10px] text-muted-foreground">Enterprise AI Platform</p>
+            <h1 className="text-sm font-semibold text-foreground tracking-tight">GhostCut</h1>
+            <p className="text-[10px] text-muted-foreground">Intelligent Document Platform</p>
           </div>
         )}
       </div>
