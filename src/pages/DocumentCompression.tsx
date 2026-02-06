@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { FileText, Download, Loader2, ShieldCheck } from "lucide-react";
+import { FileText, Download, Loader2, ShieldCheck, Layers, BarChart3 } from "lucide-react";
 import { FileUpload } from "@/components/FileUpload";
-import { SummaryPanel } from "@/components/SummaryPanel";
+import { SummaryPanel, type SummaryViewLevel } from "@/components/SummaryPanel";
 import { ChunkViewer } from "@/components/ChunkViewer";
 import { MetricCard } from "@/components/MetricCard";
 import { TransparencyPanel } from "@/components/TransparencyPanel";
@@ -20,6 +20,7 @@ export default function DocumentCompression() {
   const [activeTab, setActiveTab] = useState<"summary" | "chunks" | "json">("summary");
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
   const [lastFile, setLastFile] = useState<File | null>(null);
+  const [summaryViewLevel, setSummaryViewLevel] = useState<SummaryViewLevel>("detailed");
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
@@ -27,34 +28,21 @@ export default function DocumentCompression() {
     setLastFile(file);
 
     try {
-      // Step 1: Extract text using proper PDF/text parser
       const result = await extractDocumentText(file);
       setExtractionResult(result);
 
-      // FAIL-SAFE: Block processing if extraction failed
       if (result.status === "failed" || !result.text.trim()) {
-        toast({
-          title: "Extraction failed",
-          description: "Could not extract readable text. Please try a different file.",
-          variant: "destructive",
-        });
+        toast({ title: "Extraction failed", description: "Could not extract readable text. Please try a different file.", variant: "destructive" });
         setIsProcessing(false);
         return;
       }
 
-      // Warn but continue for OCR-needed status
       if (result.status === "ocr-needed") {
-        toast({
-          title: "Limited extraction",
-          description: "Only partial text could be extracted. Results may be incomplete.",
-          variant: "destructive",
-        });
+        toast({ title: "Limited extraction", description: "Only partial text could be extracted. Results may be incomplete.", variant: "destructive" });
       }
 
-      // Step 2: Store clean extracted text as ground truth
       setDocument(file.name, result.text);
 
-      // Step 3: Send ONLY clean text to AI for compression
       const { data, error } = await supabase.functions.invoke("analyze-document", {
         body: { action: "compress", text: result.text.slice(0, 30000), fileName: file.name },
       });
@@ -65,8 +53,8 @@ export default function DocumentCompression() {
       setSummaries(data.summaries || []);
       setVerificationStats(data.verificationStats || null);
       toast({
-        title: "Document processed",
-        description: `${data.chunks?.length || 0} chunks extracted — ${data.verificationStats?.verifiedFacts || 0} facts verified`,
+        title: "Document compressed",
+        description: `${data.summaries?.length || 0} summary levels — ${data.verificationStats?.verifiedFacts || 0} facts verified`,
       });
     } catch (err: any) {
       console.error("Processing error:", err);
@@ -77,9 +65,7 @@ export default function DocumentCompression() {
   };
 
   const handleReExtract = () => {
-    if (lastFile) {
-      processFile(lastFile);
-    }
+    if (lastFile) processFile(lastFile);
   };
 
   const handleExportJSON = () => {
@@ -103,7 +89,7 @@ export default function DocumentCompression() {
             Compression Studio
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Extraction-first document compression with fact verification
+            Multi-level hierarchical compression with fact verification
           </p>
         </div>
         {summaries.length > 0 && (
@@ -117,10 +103,8 @@ export default function DocumentCompression() {
         )}
       </div>
 
-      {/* Upload area */}
       <FileUpload onFileSelect={processFile} isProcessing={isProcessing} />
 
-      {/* Extraction Status Banner */}
       {extractionResult && (
         <ExtractionStatusBanner
           status={extractionResult.status}
@@ -138,13 +122,17 @@ export default function DocumentCompression() {
           </div>
           <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4 content-start">
             <MetricCard label="Total Chunks" value={chunks.length} icon={<FileText className="w-5 h-5" />} />
-            <MetricCard label="Summary Levels" value={summaries.length > 0 ? 3 : 0} />
             <MetricCard
-              label="Entities Found"
-              value={summaries.reduce((acc, s) => {
-                const e = s.extractedEntities;
-                return acc + (e ? e.numbers.length + e.dates.length + e.risks.length : 0);
-              }, 0)}
+              label="Compression"
+              value={`${verificationStats.compressionRatio ?? 0}%`}
+              icon={<BarChart3 className="w-5 h-5" />}
+            />
+            <MetricCard
+              label="Abstraction"
+              value={verificationStats.abstractionLevel
+                ? verificationStats.abstractionLevel.charAt(0).toUpperCase() + verificationStats.abstractionLevel.slice(1)
+                : "—"}
+              icon={<Layers className="w-5 h-5" />}
             />
             <MetricCard
               label="Verified Facts"
@@ -155,7 +143,7 @@ export default function DocumentCompression() {
         </div>
       )}
 
-      {/* Extracted Text Preview (replaces raw file data) */}
+      {/* Extracted Text Preview */}
       {rawText && chunks.length > 0 && (
         <SourceTextViewer rawText={rawText} highlightText={highlightText || undefined} />
       )}
@@ -174,7 +162,7 @@ export default function DocumentCompression() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab === "summary" ? "Verified Summaries" : tab === "chunks" ? "Chunks" : "JSON Output"}
+                {tab === "summary" ? "Verified Summaries" : tab === "chunks" ? "Raw Chunks" : "JSON Output"}
               </button>
             ))}
           </div>
@@ -184,6 +172,8 @@ export default function DocumentCompression() {
               <SummaryPanel
                 sections={summaries}
                 onHighlightSource={(text) => setHighlightText(text)}
+                viewLevel={summaryViewLevel}
+                onViewLevelChange={setSummaryViewLevel}
               />
             )}
             {activeTab === "chunks" && <ChunkViewer chunks={chunks} title="Document Chunks" />}
@@ -199,7 +189,7 @@ export default function DocumentCompression() {
       {isProcessing && (
         <div className="flex items-center justify-center py-12 gap-3 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Extracting and verifying document content...</span>
+          <span className="text-sm">Extracting, compressing, and verifying document content...</span>
         </div>
       )}
     </div>

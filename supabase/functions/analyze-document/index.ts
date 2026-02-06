@@ -38,7 +38,7 @@ serve(async (req) => {
 
 async function callAI(messages: any[], LOVABLE_API_KEY: string, tools?: any[], tool_choice?: any) {
   const body: any = {
-    model: "google/gemini-3-flash-preview",
+    model: "google/gemini-2.5-flash",
     messages,
   };
   if (tools) {
@@ -67,53 +67,75 @@ async function callAI(messages: any[], LOVABLE_API_KEY: string, tools?: any[], t
 }
 
 /* ──────────────────────────────────────────────
-   EXTRACTION-FIRST COMPRESSION PIPELINE
-   Step 1: Extract raw text → store as ground truth
-   Step 2: Chunk with source references
-   Step 3: Summarize ONLY from extracted chunks
-   Step 4: Verify each fact against source text
+   MULTI-LEVEL HIERARCHICAL COMPRESSION PIPELINE
+   Level 1: Executive TL;DR (5 bullet max)
+   Level 2: Section Summaries (abstracted insights)
+   Level 3: Evidence Layer (exact quotes + refs)
+   + Cross-chunk reasoning & deduplication
    ────────────────────────────────────────────── */
 
 async function handleCompress(text: string, fileName: string, apiKey: string) {
-  // Step 1: Build line-indexed source for traceability
   const lines = text.split("\n");
-  const lineIndex = lines.map((line, i) => ({ lineNumber: i + 1, text: line }));
-
-  // Step 2: Create chunks with exact source references
   const rawChunks = createChunksWithReferences(text, lines);
+  const sourceWordCount = text.split(/\s+/).length;
 
-  // Step 3: Ask AI to summarize ONLY from provided chunks — strict extraction mode
-  const systemPrompt = `You are a STRICT document extraction AI. You must follow these rules absolutely:
+  const systemPrompt = `You are an expert document intelligence AI that produces MULTI-LEVEL HIERARCHICAL COMPRESSION.
 
 CRITICAL RULES:
-1. ONLY use text that is DIRECTLY present in the provided document chunks. 
-2. NEVER invent, infer, assume, or add ANY information not in the source text.
-3. NEVER rewrite, embellish, or creatively interpret the source text.
-4. If information is missing from the source, output "Not present in source document".
-5. Every statement in your summary MUST have a direct quote from the source text as evidence.
-6. Preserve original wording, titles, names, dates, and numbers EXACTLY as written.
-7. For resumes: preserve original job titles, institutions, dates, and achievements verbatim.
+1. ONLY use text directly present in the source document. NEVER invent or infer.
+2. Every claim MUST have exact source evidence quotes.
+3. Preserve original wording, names, dates, numbers EXACTLY.
+4. If information is missing, output "Not present in source document".
 
-VERIFICATION REQUIREMENT:
-- For each summary point, you MUST include the exact original text it came from in the "evidence" field.
-- Set "verified" to true ONLY if the summary directly reflects the source text without modification.
-- Set "verified" to false and "verificationNote" to explain if you are uncertain.
+YOUR TASK — Generate THREE levels of compression:
 
-OUTPUT FORMAT:
-- Use the provided tool to return structured results.
-- Each summary must include evidence (exact source quote) and verification status.`;
+LEVEL 1 — EXECUTIVE SUMMARY (id prefix: "exec-"):
+- Create ONE document-level summary node with level="document"
+- The "summary" field = 3-5 concise bullet points capturing the MOST important facts
+- This is a TL;DR — high-level takeaways only, NOT raw sentences
+- Cross-reference ALL chunks to find the big picture
+- Deduplicate repeated information across chunks
+- The "evidence" field = key supporting quotes concatenated
+
+LEVEL 2 — SECTION SUMMARIES (id prefix: "sec-"):
+- Create these as "children" of the executive summary node
+- Each child has level="chapter"
+- Group related chunks into logical THEMATIC sections (e.g., for resumes: Education, Skills, Projects, Achievements)
+- Each section summary = ONE short paragraph (2-3 sentences) that ABSTRACTS and SYNTHESIZES multiple chunks
+- Do NOT copy-paste raw text — restructure it into intelligent insights
+- Remove redundancy — if the same fact appears in multiple chunks, mention it ONCE
+- The "evidence" field = the exact source quotes supporting the section summary
+
+LEVEL 3 — EVIDENCE DETAILS (id prefix: "ev-"):
+- Create these as "children" of each section summary
+- Each child has level="section"
+- These are individual verified facts with exact original wording
+- The "summary" field = the specific fact/claim
+- The "evidence" field = the EXACT original sentence from source
+
+FOR RESUMES specifically, organize sections as:
+- Profile Overview, Education, Achievements, Technical Skills, Projects, Certifications/Activities
+
+ENTITIES: Extract numbers, dates, risks, constraints, exceptions from source text only.
+
+QUALITY REQUIREMENTS:
+- Executive summary must be SHORT and scannable (judge-friendly)
+- Section summaries must show UNDERSTANDING, not just extraction
+- Evidence layer preserves exact wording for verification
+- Total summary word count should be 30-50% of source (real compression)`;
 
   const tools = [
     {
       type: "function",
       function: {
-        name: "verified_compression",
-        description: "Return verified hierarchical document compression with fact-checked summaries",
+        name: "hierarchical_compression",
+        description: "Return multi-level hierarchical document compression",
         parameters: {
           type: "object",
           properties: {
             summaries: {
               type: "array",
+              description: "Should contain ONE document-level executive summary with section children, each with evidence children",
               items: {
                 type: "object",
                 properties: {
@@ -121,10 +143,10 @@ OUTPUT FORMAT:
                   title: { type: "string" },
                   level: { type: "string", enum: ["document", "chapter", "section"] },
                   summary: { type: "string" },
-                  evidence: { type: "string", description: "Exact quote from source text that supports this summary" },
-                  sourceRef: { type: "string", description: "Line range reference e.g. 'Lines 1-15'" },
-                  verified: { type: "boolean", description: "true only if summary directly reflects source text" },
-                  verificationNote: { type: "string", description: "Explanation if not verified or partially verified" },
+                  evidence: { type: "string", description: "Exact quote(s) from source text" },
+                  sourceRef: { type: "string", description: "Line range reference e.g. 'Lines 1-50'" },
+                  verified: { type: "boolean" },
+                  verificationNote: { type: "string" },
                   extractedEntities: {
                     type: "object",
                     properties: {
@@ -162,6 +184,24 @@ OUTPUT FORMAT:
                           required: ["numbers", "dates", "risks", "constraints", "exceptions"],
                           additionalProperties: false,
                         },
+                        children: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string" },
+                              title: { type: "string" },
+                              level: { type: "string", enum: ["section"] },
+                              summary: { type: "string" },
+                              evidence: { type: "string" },
+                              sourceRef: { type: "string" },
+                              verified: { type: "boolean" },
+                              verificationNote: { type: "string" },
+                            },
+                            required: ["id", "title", "level", "summary", "evidence", "verified"],
+                            additionalProperties: false,
+                          },
+                        },
                       },
                       required: ["id", "title", "level", "summary", "evidence", "verified"],
                       additionalProperties: false,
@@ -179,7 +219,7 @@ OUTPUT FORMAT:
                 verifiedFacts: { type: "number" },
                 unverifiedFacts: { type: "number" },
                 conflictFacts: { type: "number" },
-                confidenceScore: { type: "number", description: "0-100 overall extraction confidence" },
+                confidenceScore: { type: "number", description: "0-100 extraction confidence" },
                 hallucinationRisk: { type: "string", enum: ["low", "medium", "high"] },
               },
               required: ["totalFacts", "verifiedFacts", "unverifiedFacts", "conflictFacts", "confidenceScore", "hallucinationRisk"],
@@ -193,22 +233,23 @@ OUTPUT FORMAT:
     },
   ];
 
-  // Build the prompt with chunked source text and line references
   const chunkedText = rawChunks
     .map((c) => `[${c.sourceRef}]\n${c.text}`)
     .join("\n\n---\n\n");
+
+  console.log(`Processing document: ${fileName}, ${sourceWordCount} words, ${rawChunks.length} chunks`);
 
   const result = await callAI(
     [
       { role: "system", content: systemPrompt },
       {
         role: "user",
-        content: `Analyze this document titled "${fileName}". Extract and summarize ONLY what is directly written below. Do NOT add any information not present.\n\nSOURCE DOCUMENT:\n${chunkedText}`,
+        content: `Analyze and compress this document titled "${fileName}". Produce a 3-level hierarchical summary. Cross-reference chunks, deduplicate, and abstract into intelligent insights.\n\nSOURCE DOCUMENT (${rawChunks.length} chunks):\n${chunkedText}`,
       },
     ],
     apiKey,
     tools,
-    { type: "function", function: { name: "verified_compression" } }
+    { type: "function", function: { name: "hierarchical_compression" } }
   );
 
   const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
@@ -216,17 +257,30 @@ OUTPUT FORMAT:
 
   const parsed = JSON.parse(toolCall.function.arguments);
 
-  // Step 4: Post-processing verification — check evidence against source
+  // Post-processing verification
   const verifiedSummaries = postVerify(parsed.summaries, text);
-
-  // Recompute stats after post-verification
   const stats = computeVerificationStats(verifiedSummaries);
+
+  // Compute compression quality metrics
+  const summaryWordCount = countSummaryWords(verifiedSummaries);
+  const compressionRatio = sourceWordCount > 0
+    ? Math.round((1 - summaryWordCount / sourceWordCount) * 100)
+    : 0;
+  const redundancyScore = computeRedundancyScore(verifiedSummaries);
+  const abstractionLevel = computeAbstractionLevel(verifiedSummaries, text);
 
   return new Response(
     JSON.stringify({
       chunks: rawChunks,
       summaries: verifiedSummaries,
-      verificationStats: stats,
+      verificationStats: {
+        ...stats,
+        compressionRatio,
+        redundancyScore,
+        abstractionLevel,
+        sourceWordCount,
+        summaryWordCount,
+      },
       rawTextPreview: text.slice(0, 2000),
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -236,7 +290,7 @@ OUTPUT FORMAT:
 /** Create chunks from raw text with exact line references */
 function createChunksWithReferences(text: string, lines: string[]): any[] {
   const chunks: any[] = [];
-  const chunkSize = 15; // lines per chunk
+  const chunkSize = 15;
   let chunkIndex = 0;
 
   for (let i = 0; i < lines.length; i += chunkSize) {
@@ -249,7 +303,7 @@ function createChunksWithReferences(text: string, lines: string[]): any[] {
       id: `chunk-${chunkIndex}`,
       text: chunkText,
       sourceRef: `Lines ${i + 1}-${Math.min(i + chunkSize, lines.length)}`,
-      pageNumber: Math.ceil((i + 1) / 50), // approximate page
+      pageNumber: Math.ceil((i + 1) / 50),
     });
   }
 
@@ -262,12 +316,11 @@ function postVerify(summaries: any[], sourceText: string): any[] {
 
   return summaries.map((s: any) => {
     const evidence = s.evidence || "";
-    // Check if significant words from evidence appear in source
     const evidenceWords = evidence
       .toLowerCase()
       .split(/\s+/)
       .filter((w: string) => w.length > 3);
-    
+
     const matchCount = evidenceWords.filter((w: string) => lowerSource.includes(w)).length;
     const matchRatio = evidenceWords.length > 0 ? matchCount / evidenceWords.length : 0;
 
@@ -283,7 +336,7 @@ function postVerify(summaries: any[], sourceText: string): any[] {
         : matchRatio >= 0.3
         ? "Partial match — some evidence terms not found in source"
         : "Evidence could not be confirmed in source document",
-      originalText: evidence, // Use the evidence as the source reference
+      originalText: evidence,
     };
 
     if (s.children) {
@@ -314,6 +367,69 @@ function computeVerificationStats(summaries: any[]): any {
   const hallucinationRisk = confidenceScore >= 80 ? "low" : confidenceScore >= 50 ? "medium" : "high";
 
   return { totalFacts: total, verifiedFacts: verified, unverifiedFacts: unverified, conflictFacts: conflict, confidenceScore, hallucinationRisk };
+}
+
+/** Count total words across all summary texts */
+function countSummaryWords(summaries: any[]): number {
+  let count = 0;
+  for (const s of summaries) {
+    count += (s.summary || "").split(/\s+/).length;
+    if (s.children) count += countSummaryWords(s.children);
+  }
+  return count;
+}
+
+/** Compute redundancy score — how many duplicate phrases exist across summaries */
+function computeRedundancyScore(summaries: any[]): number {
+  const phrases: string[] = [];
+
+  function collect(items: any[]) {
+    for (const item of items) {
+      const words = (item.summary || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 4);
+      // Create 3-grams
+      for (let i = 0; i < words.length - 2; i++) {
+        phrases.push(words.slice(i, i + 3).join(" "));
+      }
+      if (item.children) collect(item.children);
+    }
+  }
+
+  collect(summaries);
+
+  if (phrases.length === 0) return 100;
+
+  const unique = new Set(phrases);
+  const redundancyRatio = 1 - unique.size / phrases.length;
+  // 0 = no redundancy (good), 100 = all duplicates (bad)
+  // Invert: score 100 = no redundancy (best), 0 = all duplicates
+  return Math.round((1 - redundancyRatio) * 100);
+}
+
+/** Compute abstraction level — how different summaries are from raw source text */
+function computeAbstractionLevel(summaries: any[], sourceText: string): string {
+  const sourceWords = new Set(sourceText.toLowerCase().split(/\s+/).filter((w: string) => w.length > 4));
+  const summaryWords: string[] = [];
+
+  function collect(items: any[]) {
+    for (const item of items) {
+      if (item.level !== "section") { // Only check non-evidence levels
+        summaryWords.push(...(item.summary || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 4));
+      }
+      if (item.children) collect(item.children);
+    }
+  }
+
+  collect(summaries);
+
+  if (summaryWords.length === 0) return "none";
+
+  const overlapCount = summaryWords.filter(w => sourceWords.has(w)).length;
+  const overlapRatio = overlapCount / summaryWords.length;
+
+  // Lower overlap = higher abstraction
+  if (overlapRatio < 0.5) return "high";
+  if (overlapRatio < 0.7) return "medium";
+  return "low";
 }
 
 async function handleAudit(query: string, text: string, chunks: any[], apiKey: string) {
