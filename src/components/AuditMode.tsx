@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Shield, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Ghost } from "lucide-react";
 import { AuditSearchBar } from "@/components/AuditSearchBar";
+import { GhostModeSuggestions } from "@/components/GhostModeSuggestions";
 import { useDocumentSearch } from "@/hooks/useDocumentSearch";
 import { useDocumentStore } from "@/stores/documentStore";
 import { useAuditSearch } from "@/hooks/useAuditSearch";
@@ -23,7 +23,7 @@ export function AuditMode() {
     }
   }, [search.terms, setHighlightText, setSearchTerms]);
 
-  // Ctrl+F or Cmd+F opens search when audit mode is active
+  // Ctrl+F or Cmd+F opens search when ghost mode is active
   useEffect(() => {
     if (!isActive) return;
     const handler = (e: KeyboardEvent) => {
@@ -43,15 +43,17 @@ export function AuditMode() {
 
   const handleToggle = useCallback(() => {
     if (isActive) {
-      // Deactivate: close search and clear
       handleClose();
       setIsActive(false);
     } else {
-      // Activate: open search bar immediately
       setIsActive(true);
       search.setOpen(true);
     }
   }, [isActive, handleClose, search]);
+
+  const handleSuggestionSelect = useCallback((query: string) => {
+    search.setQuery(query);
+  }, [search]);
 
   // Floating activation button
   if (!isActive) {
@@ -59,17 +61,17 @@ export function AuditMode() {
       <button
         onClick={handleToggle}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-glow hover:shadow-elevated transition-all duration-300 animate-pulse-glow"
-        title="Enable Audit Mode (Ctrl+F)"
+        title="Enable Ghost Mode (Ctrl+F)"
       >
-        <Shield className="w-4 h-4" />
-        Audit Mode
+        <Ghost className="w-4 h-4" />
+        Ghost Mode
       </button>
     );
   }
 
   return (
     <>
-      {/* Search bar — always visible when audit mode is active */}
+      {/* Search bar */}
       <AuditSearchBar
         query={search.query}
         terms={search.terms}
@@ -84,6 +86,14 @@ export function AuditMode() {
         onGoToIndex={search.goToIndex}
         onClose={handleToggle}
       />
+
+      {/* Smart suggestions when no query */}
+      {!search.query && search.smartSuggestions.length > 0 && (
+        <GhostModeSuggestions
+          suggestions={search.smartSuggestions}
+          onSelect={handleSuggestionSelect}
+        />
+      )}
     </>
   );
 }

@@ -2,6 +2,30 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useDocumentStore } from "@/stores/documentStore";
 import type { SummarySection } from "@/components/SummaryPanel";
 
+// ── Stopwords to filter out from search queries ──
+const STOPWORDS = new Set([
+  "what", "is", "the", "of", "a", "an", "to", "for", "in", "on", "it", "its",
+  "this", "that", "are", "was", "were", "be", "been", "being", "have", "has",
+  "had", "do", "does", "did", "will", "would", "could", "should", "may",
+  "might", "shall", "can", "with", "from", "into", "about", "after", "before",
+  "where", "when", "which", "their", "there", "these", "those", "than", "then",
+  "over", "under", "between", "how", "who", "whom", "why", "not", "no", "nor",
+  "but", "or", "and", "if", "so", "at", "by", "up", "out", "off", "each",
+  "every", "some", "any", "all", "most", "other", "more", "much", "many",
+  "also", "just", "very", "only", "such", "my", "your", "our", "his", "her",
+]);
+
+// ── Entity extraction patterns ──
+const ENTITY_PATTERNS = [
+  { label: "flight_number", regex: /\b[A-Z]{2}-?\d{3,5}\b/g },
+  { label: "pnr", regex: /\b[A-Z0-9]{6}\b/g },
+  { label: "date", regex: /\b\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b/gi },
+  { label: "amount", regex: /\$[\d,.]+|\₹[\d,.]+|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g },
+  { label: "email", regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b/gi },
+  { label: "phone", regex: /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g },
+  { label: "order_id", regex: /\b(?:ORD|ORDER|INV|REF)[-#]?\d{4,}\b/gi },
+];
+
 export interface SearchMatch {
   id: string;
   text: string;
@@ -11,7 +35,7 @@ export interface SearchMatch {
   pageNumber?: number;
   confidence?: number;
   lineNumber?: number;
-  termIndex: number; // which search term matched
+  termIndex: number;
 }
 
 interface SearchState {
@@ -22,9 +46,30 @@ interface SearchState {
   isOpen: boolean;
 }
 
+/** Extract meaningful terms by removing stopwords */
+function extractSearchTerms(query: string): string[] {
+  const words = query.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
+  const meaningful = words.filter(w => !STOPWORDS.has(w));
+  // If ALL words are stopwords, fall back to original words
+  return meaningful.length > 0 ? meaningful : words;
+}
+
+/** Extract named entities from text using regex patterns */
+function extractEntities(text: string): Map<string, Set<string>> {
+  const entities = new Map<string, Set<string>>();
+  for (const { label, regex } of ENTITY_PATTERNS) {
+    const copy = new RegExp(regex.source, regex.flags);
+    let match;
+    while ((match = copy.exec(text)) !== null) {
+      if (!entities.has(label)) entities.set(label, new Set());
+      entities.get(label)!.add(match[0]);
+    }
+  }
+  return entities;
+}
+
 function extractTextFromSections(sections: SummarySection[], results: SearchMatch[], terms: string[]) {
   for (const section of sections) {
-    // Search summary text
     for (let ti = 0; ti < terms.length; ti++) {
       const term = terms[ti];
       if (section.summary.toLowerCase().includes(term)) {
@@ -36,10 +81,9 @@ function extractTextFromSections(sections: SummarySection[], results: SearchMatc
           sourceLabel: section.level === "document" ? "Executive Summary" : `Section: ${section.title}`,
           termIndex: ti,
         });
-        break; // one match per section per term
+        break;
       }
     }
-    // Search evidence
     if (section.evidence) {
       for (let ti = 0; ti < terms.length; ti++) {
         if (section.evidence.toLowerCase().includes(terms[ti])) {
@@ -70,7 +114,6 @@ function buildSuggestions(
 ): string[] {
   const entities = new Set<string>();
 
-  // Extract capitalized words (likely names, orgs)
   const allText = [
     ...summaries.map(s => s.summary),
     ...summaries.flatMap(s => s.evidence ? [s.evidence] : []),
@@ -79,7 +122,16 @@ function buildSuggestions(
     rawText || "",
   ].join(" ");
 
-  // Named entities: capitalized words 2+ chars, not common words
+  // Named entities via regex
+  for (const { regex } of ENTITY_PATTERNS) {
+    const copy = new RegExp(regex.source, regex.flags);
+    let match;
+    while ((match = copy.exec(allText)) !== null) {
+      entities.add(match[0]);
+    }
+  }
+
+  // Capitalized multi-word names
   const commonWords = new Set(["The", "This", "That", "With", "From", "Into", "About", "After", "Before", "Where", "When", "Which", "Their", "There", "These", "Those", "Would", "Could", "Should", "Have", "Been", "Will", "Does", "Each", "Every", "Some", "Other", "More", "Most", "Such", "Only", "Very", "Also", "Just", "Than", "Then", "Over", "Under", "Between"]);
   const nameRegex = /\b[A-Z][a-z]{2,}(?:\s[A-Z][a-z]{2,})*\b/g;
   let match;
@@ -90,19 +142,52 @@ function buildSuggestions(
     }
   }
 
-  // Dates
-  const dateRegex = /\b\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b/gi;
-  while ((match = dateRegex.exec(allText)) !== null) {
-    entities.add(match[0]);
-  }
-
-  // Amounts
-  const amountRegex = /\$[\d,.]+|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g;
-  while ((match = amountRegex.exec(allText)) !== null) {
-    entities.add(match[0]);
-  }
-
   return Array.from(entities).slice(0, 200);
+}
+
+/** Generate smart document-aware query suggestions */
+function generateSmartSuggestions(
+  summaries: SummarySection[],
+  chunks: { text: string }[],
+  rawText: string | null,
+): string[] {
+  const suggestions: string[] = [];
+  const allText = [
+    ...summaries.map(s => s.summary),
+    ...chunks.map(c => c.text),
+    rawText || "",
+  ].join(" ");
+
+  // Detect document type and suggest accordingly
+  const lower = allText.toLowerCase();
+
+  // Travel documents
+  if (/flight|airline|boarding|itinerary|pnr|airport/.test(lower)) {
+    suggestions.push("What is the flight number?", "What is the travel date?", "What is the PNR?");
+  }
+  // Resumes
+  if (/resume|curriculum|experience|education|skills|achievements/.test(lower)) {
+    suggestions.push("What are the main skills?", "Education details?", "Top achievements?");
+  }
+  // Financial
+  if (/invoice|payment|amount|total|tax|refund|balance/.test(lower)) {
+    suggestions.push("What is the total amount?", "Refund policy?", "Payment terms?");
+  }
+  // Legal/contracts
+  if (/agreement|contract|party|clause|termination|liability/.test(lower)) {
+    suggestions.push("Key contract terms?", "Termination clause?", "Liability limits?");
+  }
+  // Generic fallback
+  if (suggestions.length === 0) {
+    // Use section headers as suggestions
+    for (const s of summaries.slice(0, 3)) {
+      if (s.title && s.title !== "Document Summary") {
+        suggestions.push(`What about ${s.title}?`);
+      }
+    }
+  }
+
+  return suggestions.slice(0, 3);
 }
 
 export function useDocumentSearch() {
@@ -124,6 +209,12 @@ export function useDocumentSearch() {
     [summaries, chunks, rawText, executiveAlerts]
   );
 
+  // Smart document-aware query suggestions
+  const smartSuggestions = useMemo(
+    () => generateSmartSuggestions(summaries, chunks, rawText),
+    [summaries, chunks, rawText]
+  );
+
   const search = useCallback(
     (query: string) => {
       if (!query.trim()) {
@@ -131,7 +222,8 @@ export function useDocumentSearch() {
         return;
       }
 
-      const terms = query.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
+      // Use stopword-filtered terms
+      const terms = extractSearchTerms(query);
       if (terms.length === 0) {
         setState(s => ({ ...s, query, terms: [], matches: [], activeIndex: 0 }));
         return;
@@ -204,7 +296,7 @@ export function useDocumentSearch() {
         }
       }
 
-      // Deduplicate by id
+      // Deduplicate
       const seen = new Set<string>();
       const unique = matches.filter(m => {
         if (seen.has(m.id)) return false;
@@ -271,6 +363,7 @@ export function useDocumentSearch() {
     goToPrev,
     goToIndex,
     filteredSuggestions,
+    smartSuggestions,
     totalMatches: state.matches.length,
     activeMatch: state.matches[state.activeIndex] || null,
   };
@@ -278,8 +371,8 @@ export function useDocumentSearch() {
 
 // Highlight colors for multi-term support
 export const HIGHLIGHT_COLORS = [
-  "rgba(255, 230, 100, 0.7)",
-  "rgba(100, 210, 255, 0.5)",
+  "rgba(255, 240, 120, 0.7)",
+  "rgba(100, 220, 210, 0.45)",
   "rgba(180, 255, 150, 0.5)",
   "rgba(255, 180, 220, 0.5)",
   "rgba(200, 180, 255, 0.5)",
@@ -288,7 +381,6 @@ export const HIGHLIGHT_COLORS = [
 export function highlightTermsInText(text: string, terms: string[]): React.ReactNode[] {
   if (!terms.length) return [text];
 
-  // Build a regex that matches any term
   const escaped = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const regex = new RegExp(`(${escaped.join("|")})`, "gi");
   const parts = text.split(regex);

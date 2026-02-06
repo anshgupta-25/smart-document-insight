@@ -1,15 +1,15 @@
 interface GhostCutLogoProps {
   size?: number;
   className?: string;
+  ghostMode?: boolean;
 }
 
-export function GhostCutLogo({ size = 40, className = "" }: GhostCutLogoProps) {
+export function GhostCutLogo({ size = 40, className = "", ghostMode = false }: GhostCutLogoProps) {
   return (
     <div
       className={`relative shrink-0 ${className}`}
       style={{ width: size, height: size }}
     >
-      {/* Container with rounded corners and gradient */}
       <svg
         viewBox="0 0 100 100"
         fill="none"
@@ -53,9 +53,25 @@ export function GhostCutLogo({ size = 40, className = "" }: GhostCutLogoProps) {
           fill="none"
         />
 
-        {/* Red accent dot (top-right) — AI alert indicator */}
-        <circle cx="72" cy="20" r="6" fill="hsl(0, 72%, 50%)" />
-        <circle cx="72" cy="20" r="3" fill="hsl(0, 72%, 65%)" opacity="0.6" />
+        {/* Teal/Green accent dot (top-right) — AI trust indicator */}
+        <circle cx="72" cy="20" r="6" fill="hsl(152, 60%, 45%)" />
+        <circle cx="72" cy="20" r="3" fill="hsl(152, 60%, 62%)" opacity="0.6" />
+
+        {/* Ghost mode glow ring */}
+        {ghostMode && (
+          <rect
+            x="2"
+            y="2"
+            width="96"
+            height="96"
+            rx="24"
+            fill="none"
+            stroke="hsl(152, 60%, 45%)"
+            strokeWidth="2"
+            opacity="0.5"
+            className="animate-pulse"
+          />
+        )}
 
         {/* Gradient definitions */}
         <defs>
@@ -90,7 +106,7 @@ export function GhostCutBrand({ size = 36, showTagline = false, className = "" }
       <GhostCutLogo size={size} />
       <div className="min-w-0">
         <h1 className="text-sm font-bold text-foreground tracking-tight leading-tight">
-          GHOST<span className="text-destructive">CUT</span>
+          GHOST<span className="text-primary">CUT</span>
         </h1>
         {showTagline && (
           <p className="text-[10px] text-muted-foreground font-mono tracking-wider leading-tight truncate">
