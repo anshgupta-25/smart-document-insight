@@ -12,7 +12,7 @@ import { ExplainabilityPanel } from "@/components/ExplainabilityPanel";
 import { ReportExporter } from "@/components/ReportExporter";
 import { ImportanceLegend, type ImportanceLevel } from "@/components/ImportanceLegend";
 import { useDocumentStore } from "@/stores/documentStore";
-import { useJudgeSearch } from "@/hooks/useJudgeSearch";
+import { useAuditSearch } from "@/hooks/useAuditSearch";
 import { extractDocumentText, type ExtractionResult } from "@/lib/pdfExtractor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -29,7 +29,7 @@ export default function DocumentCompression() {
   const [lastFile, setLastFile] = useState<File | null>(null);
   const [summaryViewLevel, setSummaryViewLevel] = useState<SummaryViewLevel>("detailed");
   const [importanceFilter, setImportanceFilter] = useState<ImportanceLevel | null>(null);
-  const { searchTerms } = useJudgeSearch();
+  const { searchTerms } = useAuditSearch();
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
