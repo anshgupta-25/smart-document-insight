@@ -12,6 +12,7 @@ import { ExplainabilityPanel } from "@/components/ExplainabilityPanel";
 import { ReportExporter } from "@/components/ReportExporter";
 import { ImportanceLegend, type ImportanceLevel } from "@/components/ImportanceLegend";
 import { useDocumentStore } from "@/stores/documentStore";
+import { useJudgeSearch } from "@/hooks/useJudgeSearch";
 import { extractDocumentText, type ExtractionResult } from "@/lib/pdfExtractor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ export default function DocumentCompression() {
   const [lastFile, setLastFile] = useState<File | null>(null);
   const [summaryViewLevel, setSummaryViewLevel] = useState<SummaryViewLevel>("detailed");
   const [importanceFilter, setImportanceFilter] = useState<ImportanceLevel | null>(null);
+  const { searchTerms } = useJudgeSearch();
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
@@ -150,7 +152,7 @@ export default function DocumentCompression() {
 
       {/* Extracted Text Preview */}
       {rawText && chunks.length > 0 && (
-        <SourceTextViewer rawText={rawText} highlightText={highlightText || undefined} />
+        <SourceTextViewer rawText={rawText} highlightText={highlightText || undefined} searchTerms={searchTerms} />
       )}
 
       {/* Content tabs */}
@@ -186,7 +188,7 @@ export default function DocumentCompression() {
                 />
               </div>
             )}
-            {activeTab === "chunks" && <ChunkViewer chunks={chunks} title="Document Chunks" />}
+            {activeTab === "chunks" && <ChunkViewer chunks={chunks} title="Document Chunks" searchTerms={searchTerms} />}
             {activeTab === "json" && (
               <pre className="rounded-xl bg-card border border-border p-4 text-xs font-mono text-secondary-foreground overflow-auto max-h-[500px] scrollbar-thin">
                 {JSON.stringify({ fileName, summaries, chunks, verificationStats, executiveAlerts, aiDecisions }, null, 2)}

@@ -223,3 +223,17 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+@keyframes search-flash {
+  0% { background: hsl(174 72% 46% / 0.3); }
+  50% { background: hsl(50 100% 60% / 0.4); }
+  100% { background: transparent; }
+}
+
+.search-flash {
+  animation: search-flash 1.2s ease-out;
+}
+
+.search-highlight {
+  transition: background-color 0.2s ease;
+}

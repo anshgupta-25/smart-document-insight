@@ -89,7 +89,7 @@ function EvidenceNode({
   const badge = verificationBadge[status];
 
   return (
-    <div className={cn("ml-10 border-l-2 border-border pl-4 py-2 animate-fade-in", section.importance && importanceBorderStyle[section.importance.level])}>
+    <div className={cn("ml-10 border-l-2 border-border pl-4 py-2 animate-fade-in", section.importance && importanceBorderStyle[section.importance.level])} data-search-id={`summary-${section.id}-0`}>
       <div className="flex items-center gap-2 mb-1 flex-wrap">
         <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1", badge.className)}>
           {badge.icon} {badge.label}
@@ -142,7 +142,7 @@ function SectionSummaryNode({
   const filteredChildren = section.children?.filter((c) => shouldShow(c, importanceFilter || null)) || [];
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" data-search-id={`summary-${section.id}-0`}>
       <div className={cn(
         "border rounded-lg p-4 border-info/30 bg-info/5 ml-6 transition-all duration-200",
         section.importance && importanceBorderStyle[section.importance.level]
@@ -259,7 +259,7 @@ function ExecutiveNode({
   const filteredChildren = section.children?.filter((c) => shouldShow(c, importanceFilter || null)) || [];
 
   return (
-    <div className="animate-fade-in space-y-3">
+    <div className="animate-fade-in space-y-3" data-search-id={`summary-${section.id}-0`}>
       <div className={cn(
         "border rounded-xl p-5 border-primary/40 bg-accent/20 transition-all duration-200",
         section.importance && importanceBorderStyle[section.importance.level]
