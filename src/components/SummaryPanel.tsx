@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, FileText, Hash, Calendar, AlertTriangle, MapPin } from "lucide-react";
+import {
+  ChevronDown, ChevronRight, FileText, Hash, Calendar,
+  AlertTriangle, MapPin, ShieldCheck, ShieldAlert, ShieldX, Eye
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SummarySection {
@@ -7,8 +10,12 @@ export interface SummarySection {
   title: string;
   level: "document" | "chapter" | "section";
   summary: string;
+  evidence?: string;
   sourceRef?: string;
   originalText?: string;
+  verified?: boolean;
+  verificationStatus?: "verified" | "unverified" | "conflict";
+  verificationNote?: string;
   extractedEntities?: {
     numbers: string[];
     dates: string[];
@@ -21,11 +28,38 @@ export interface SummarySection {
 
 interface SummaryPanelProps {
   sections: SummarySection[];
+  onHighlightSource?: (text: string) => void;
 }
 
-function SectionNode({ section, depth = 0 }: { section: SummarySection; depth?: number }) {
+const verificationBadge = {
+  verified: {
+    icon: <ShieldCheck className="w-3 h-3" />,
+    label: "Verified",
+    className: "bg-success/15 text-success border-success/30",
+  },
+  unverified: {
+    icon: <ShieldAlert className="w-3 h-3" />,
+    label: "Unverified",
+    className: "bg-warning/15 text-warning border-warning/30",
+  },
+  conflict: {
+    icon: <ShieldX className="w-3 h-3" />,
+    label: "Conflict",
+    className: "bg-destructive/15 text-destructive border-destructive/30",
+  },
+};
+
+function SectionNode({
+  section,
+  depth = 0,
+  onHighlightSource,
+}: {
+  section: SummarySection;
+  depth?: number;
+  onHighlightSource?: (text: string) => void;
+}) {
   const [expanded, setExpanded] = useState(depth < 1);
-  const [showOriginal, setShowOriginal] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(false);
 
   const levelColors = {
     document: "border-primary/40 bg-accent/20",
@@ -38,6 +72,9 @@ function SectionNode({ section, depth = 0 }: { section: SummarySection; depth?: 
     chapter: "bg-info/20 text-info",
     section: "bg-muted text-muted-foreground",
   };
+
+  const status = section.verificationStatus || (section.verified ? "verified" : "unverified");
+  const badge = verificationBadge[status];
 
   return (
     <div className="animate-fade-in">
@@ -61,16 +98,38 @@ function SectionNode({ section, depth = 0 }: { section: SummarySection; depth?: 
           </button>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className={cn("text-[10px] font-mono uppercase px-2 py-0.5 rounded", levelBadge[section.level])}>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span
+                className={cn(
+                  "text-[10px] font-mono uppercase px-2 py-0.5 rounded",
+                  levelBadge[section.level]
+                )}
+              >
                 {section.level}
               </span>
+
+              {/* Verification Badge */}
+              <span
+                className={cn(
+                  "text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1",
+                  badge.className
+                )}
+              >
+                {badge.icon} {badge.label}
+              </span>
+
               <h3 className="text-sm font-medium text-foreground truncate">{section.title}</h3>
             </div>
 
             {expanded && (
               <div className="space-y-3 animate-fade-in">
                 <p className="text-sm text-secondary-foreground leading-relaxed">{section.summary}</p>
+
+                {section.verificationNote && (
+                  <p className="text-xs text-muted-foreground italic">
+                    📋 {section.verificationNote}
+                  </p>
+                )}
 
                 {section.sourceRef && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -108,18 +167,34 @@ function SectionNode({ section, depth = 0 }: { section: SummarySection; depth?: 
                   </div>
                 )}
 
-                {section.originalText && (
-                  <button
-                    onClick={() => setShowOriginal(!showOriginal)}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    {showOriginal ? "Hide" : "Show"} original text
-                  </button>
-                )}
+                {/* View Source / Evidence Button */}
+                <div className="flex items-center gap-3">
+                  {section.evidence && (
+                    <button
+                      onClick={() => setShowEvidence(!showEvidence)}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="w-3 h-3" />
+                      {showEvidence ? "Hide" : "View"} Source Evidence
+                    </button>
+                  )}
+                  {section.evidence && onHighlightSource && (
+                    <button
+                      onClick={() => onHighlightSource(section.evidence!)}
+                      className="text-xs text-info hover:underline flex items-center gap-1"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      Highlight in Source
+                    </button>
+                  )}
+                </div>
 
-                {showOriginal && section.originalText && (
+                {showEvidence && section.evidence && (
                   <div className="rounded-lg bg-muted/50 p-3 text-xs font-mono text-muted-foreground leading-relaxed border border-border">
-                    {section.originalText}
+                    <div className="flex items-center gap-1.5 mb-2 text-[10px] uppercase tracking-wider text-primary">
+                      <FileText className="w-3 h-3" /> Source Evidence
+                    </div>
+                    {section.evidence}
                   </div>
                 )}
               </div>
@@ -128,14 +203,20 @@ function SectionNode({ section, depth = 0 }: { section: SummarySection; depth?: 
         </div>
       </div>
 
-      {expanded && section.children?.map((child) => (
-        <SectionNode key={child.id} section={child} depth={depth + 1} />
-      ))}
+      {expanded &&
+        section.children?.map((child) => (
+          <SectionNode
+            key={child.id}
+            section={child}
+            depth={depth + 1}
+            onHighlightSource={onHighlightSource}
+          />
+        ))}
     </div>
   );
 }
 
-export function SummaryPanel({ sections }: SummaryPanelProps) {
+export function SummaryPanel({ sections, onHighlightSource }: SummaryPanelProps) {
   if (sections.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -147,8 +228,17 @@ export function SummaryPanel({ sections }: SummaryPanelProps) {
 
   return (
     <div className="space-y-3">
+      {/* Warning Banner */}
+      <div className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 flex items-center gap-3">
+        <ShieldCheck className="w-5 h-5 text-warning shrink-0" />
+        <p className="text-xs text-warning">
+          <strong>Trust Mode Active:</strong> Summaries are generated only from verified source text. 
+          Click "View Source Evidence" on any point to see proof.
+        </p>
+      </div>
+
       {sections.map((section) => (
-        <SectionNode key={section.id} section={section} />
+        <SectionNode key={section.id} section={section} onHighlightSource={onHighlightSource} />
       ))}
     </div>
   );
