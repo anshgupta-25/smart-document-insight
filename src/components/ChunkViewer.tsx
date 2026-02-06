@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { SearchHighlight } from "@/components/SearchHighlight";
 
 export interface ChunkData {
   id: string;
@@ -14,9 +15,10 @@ interface ChunkViewerProps {
   chunks: ChunkData[];
   title?: string;
   showSimilarity?: boolean;
+  searchTerms?: string[];
 }
 
-export function ChunkViewer({ chunks, title = "Document Chunks", showSimilarity }: ChunkViewerProps) {
+export function ChunkViewer({ chunks, title = "Document Chunks", showSimilarity, searchTerms = [] }: ChunkViewerProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -28,6 +30,7 @@ export function ChunkViewer({ chunks, title = "Document Chunks", showSimilarity 
         {chunks.map((chunk, index) => (
           <div
             key={chunk.id}
+            data-search-id={`chunk-${chunk.id}-0`}
             className={cn(
               "rounded-lg border p-3 transition-all duration-200 animate-fade-in",
               chunk.isNoise
@@ -64,7 +67,11 @@ export function ChunkViewer({ chunks, title = "Document Chunks", showSimilarity 
               )}
             </div>
             <p className="text-xs text-secondary-foreground leading-relaxed line-clamp-4">
-              {chunk.text}
+              {searchTerms.length > 0 ? (
+                <SearchHighlight text={chunk.text} terms={searchTerms} />
+              ) : (
+                chunk.text
+              )}
             </p>
             {chunk.sourceRef && (
               <p className="text-[10px] font-mono text-muted-foreground mt-2">

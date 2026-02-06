@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { SidebarStateProvider } from "@/hooks/useSidebarState";
+import { JudgeSearchProvider } from "@/hooks/useJudgeSearch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { JudgeDemoMode } from "@/components/JudgeDemoMode";
@@ -28,6 +29,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <SidebarStateProvider>
+          <JudgeSearchProvider>
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
@@ -77,6 +79,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <JudgeDemoMode />
+          </JudgeSearchProvider>
           </SidebarStateProvider>
         </AuthProvider>
       </BrowserRouter>

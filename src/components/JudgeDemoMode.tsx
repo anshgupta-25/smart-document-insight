@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { 
-  Play, Pause, SkipForward, SkipBack, X, Presentation,
-  FileText, Search, BarChart3, Shield, Zap, Layers, Eye, Bell
+  Play, Pause, SkipForward, SkipBack, X, Presentation, Search,
+  FileText, BarChart3, Shield, Zap, Layers, Eye, Bell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
+import { JudgeSearchBar } from "@/components/JudgeSearchBar";
+import { useDocumentSearch } from "@/hooks/useDocumentSearch";
+import { useDocumentStore } from "@/stores/documentStore";
+import { useJudgeSearch } from "@/hooks/useJudgeSearch";
 
 interface DemoStep {
   id: string;
@@ -98,6 +102,22 @@ export function JudgeDemoMode() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Search integration
+  const search = useDocumentSearch();
+  const { setHighlightText } = useDocumentStore();
+  const { setSearchTerms } = useJudgeSearch();
+
+  // Sync search terms to store for source text highlighting
+  useEffect(() => {
+    if (search.terms.length > 0) {
+      setHighlightText(search.terms.join(" "));
+      setSearchTerms(search.terms);
+    } else {
+      setHighlightText(null);
+      setSearchTerms([]);
+    }
+  }, [search.terms, setHighlightText, setSearchTerms]);
+
   const step = DEMO_STEPS[currentStep];
 
   useEffect(() => {
@@ -111,6 +131,19 @@ export function JudgeDemoMode() {
     }, 6000);
     return () => clearTimeout(timer);
   }, [currentStep, isAutoPlay, isActive]);
+
+  // Ctrl+F or Cmd+F opens search when judge mode is active
+  useEffect(() => {
+    if (!isActive) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+        e.preventDefault();
+        search.setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isActive, search]);
 
   const goToStep = useCallback((index: number) => {
     setCurrentStep(index);
@@ -135,102 +168,135 @@ export function JudgeDemoMode() {
   const Icon = step.icon;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
-      {/* Backdrop overlay */}
-      <div className="absolute inset-0 bg-background/20 backdrop-blur-[1px]" />
+    <>
+      {/* Search bar */}
+      {search.isOpen && (
+        <JudgeSearchBar
+          query={search.query}
+          terms={search.terms}
+          matches={search.matches}
+          totalMatches={search.totalMatches}
+          activeIndex={search.activeIndex}
+          activeMatch={search.activeMatch}
+          filteredSuggestions={search.filteredSuggestions}
+          onQueryChange={search.setQuery}
+          onNext={search.goToNext}
+          onPrev={search.goToPrev}
+          onGoToIndex={search.goToIndex}
+          onClose={() => { search.setOpen(false); search.setQuery(""); }}
+        />
+      )}
 
-      {/* Demo panel */}
-      <div className="relative pointer-events-auto mx-auto max-w-4xl mb-6 px-4">
-        <div className="rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-xl shadow-elevated overflow-hidden">
-          {/* Progress bar */}
-          <div className="h-1 bg-muted">
-            <div
-              className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${((currentStep + 1) / DEMO_STEPS.length) * 100}%` }}
-            />
-          </div>
+      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+        {/* Backdrop overlay */}
+        <div className="absolute inset-0 bg-background/20 backdrop-blur-[1px]" />
 
-          <div className="p-5">
-            <div className="flex items-start gap-4">
-              {/* Icon */}
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/15 text-primary shrink-0">
-                <Icon className="w-6 h-6" />
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-mono uppercase text-primary bg-primary/10 px-2 py-0.5 rounded">
-                    {currentStep + 1}/{DEMO_STEPS.length}
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase">
-                    {step.highlight}
-                  </span>
-                </div>
-                <h3 className="text-base font-semibold text-foreground">{step.title}</h3>
-                <p className="text-sm text-secondary-foreground mt-1 leading-relaxed">{step.description}</p>
-                <p className="text-xs text-primary font-medium mt-2 flex items-center gap-1.5">
-                  <Zap className="w-3 h-3" />
-                  {step.value}
-                </p>
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => goToStep(Math.max(0, currentStep - 1))}
-                  disabled={currentStep === 0}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
-                >
-                  <SkipBack className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setIsAutoPlay(!isAutoPlay)}
-                  className={cn(
-                    "p-2 rounded-lg transition-colors",
-                    isAutoPlay
-                      ? "text-primary bg-primary/10"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  {isAutoPlay ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={() => goToStep(Math.min(DEMO_STEPS.length - 1, currentStep + 1))}
-                  disabled={currentStep === DEMO_STEPS.length - 1}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
-                >
-                  <SkipForward className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => { setIsActive(false); setIsAutoPlay(false); setCurrentStep(0); }}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+        {/* Demo panel */}
+        <div className="relative pointer-events-auto mx-auto max-w-4xl mb-6 px-4">
+          <div className="rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-xl shadow-elevated overflow-hidden">
+            {/* Progress bar */}
+            <div className="h-1 bg-muted">
+              <div
+                className="h-full bg-primary transition-all duration-500"
+                style={{ width: `${((currentStep + 1) / DEMO_STEPS.length) * 100}%` }}
+              />
             </div>
 
-            {/* Step dots */}
-            <div className="flex items-center gap-1.5 mt-4 justify-center">
-              {DEMO_STEPS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goToStep(i)}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all duration-300",
-                    i === currentStep
-                      ? "bg-primary w-6"
-                      : i < currentStep
-                      ? "bg-primary/40"
-                      : "bg-muted-foreground/30"
-                  )}
-                />
-              ))}
+            <div className="p-5">
+              <div className="flex items-start gap-4">
+                {/* Icon */}
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/15 text-primary shrink-0">
+                  <Icon className="w-6 h-6" />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-mono uppercase text-primary bg-primary/10 px-2 py-0.5 rounded">
+                      {currentStep + 1}/{DEMO_STEPS.length}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase">
+                      {step.highlight}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground">{step.title}</h3>
+                  <p className="text-sm text-secondary-foreground mt-1 leading-relaxed">{step.description}</p>
+                  <p className="text-xs text-primary font-medium mt-2 flex items-center gap-1.5">
+                    <Zap className="w-3 h-3" />
+                    {step.value}
+                  </p>
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Search toggle */}
+                  <button
+                    onClick={() => search.setOpen(!search.isOpen)}
+                    className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      search.isOpen
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                    title="Search document (Ctrl+F)"
+                  >
+                    <Search className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => goToStep(Math.max(0, currentStep - 1))}
+                    disabled={currentStep === 0}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
+                  >
+                    <SkipBack className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsAutoPlay(!isAutoPlay)}
+                    className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      isAutoPlay
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {isAutoPlay ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => goToStep(Math.min(DEMO_STEPS.length - 1, currentStep + 1))}
+                    disabled={currentStep === DEMO_STEPS.length - 1}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => { setIsActive(false); setIsAutoPlay(false); setCurrentStep(0); search.setOpen(false); search.setQuery(""); }}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Step dots */}
+              <div className="flex items-center gap-1.5 mt-4 justify-center">
+                {DEMO_STEPS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goToStep(i)}
+                    className={cn(
+                      "w-2 h-2 rounded-full transition-all duration-300",
+                      i === currentStep
+                        ? "bg-primary w-6"
+                        : i < currentStep
+                        ? "bg-primary/40"
+                        : "bg-muted-foreground/30"
+                    )}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

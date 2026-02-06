@@ -1,29 +1,46 @@
 import { useState } from "react";
 import { FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDocumentStore } from "@/stores/documentStore";
+import { SearchHighlight } from "@/components/SearchHighlight";
 
 interface SourceTextViewerProps {
   rawText: string;
   highlightText?: string;
+  searchTerms?: string[];
 }
 
-export function SourceTextViewer({ rawText, highlightText }: SourceTextViewerProps) {
+export function SourceTextViewer({ rawText, highlightText, searchTerms = [] }: SourceTextViewerProps) {
   const [expanded, setExpanded] = useState(true);
 
   const lines = rawText.split("\n");
 
   const getHighlightedLines = () => {
-    if (!highlightText) return new Set<number>();
-    const hlWords = highlightText.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+    if (!highlightText && searchTerms.length === 0) return new Set<number>();
+    
     const highlighted = new Set<number>();
 
-    lines.forEach((line, i) => {
-      const lower = line.toLowerCase();
-      const matchCount = hlWords.filter(w => lower.includes(w)).length;
-      if (matchCount >= Math.min(3, hlWords.length * 0.4)) {
-        highlighted.add(i);
-      }
-    });
+    // Search term highlighting
+    if (searchTerms.length > 0) {
+      lines.forEach((line, i) => {
+        const lower = line.toLowerCase();
+        if (searchTerms.some(t => lower.includes(t))) {
+          highlighted.add(i);
+        }
+      });
+    }
+
+    // Original highlight text logic
+    if (highlightText && searchTerms.length === 0) {
+      const hlWords = highlightText.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      lines.forEach((line, i) => {
+        const lower = line.toLowerCase();
+        const matchCount = hlWords.filter(w => lower.includes(w)).length;
+        if (matchCount >= Math.min(3, hlWords.length * 0.4)) {
+          highlighted.add(i);
+        }
+      });
+    }
 
     return highlighted;
   };
@@ -58,6 +75,7 @@ export function SourceTextViewer({ rawText, highlightText }: SourceTextViewerPro
             {lines.map((line, i) => (
               <div
                 key={i}
+                data-search-id={`raw-${i}-0`}
                 className={cn(
                   "flex gap-3 py-0.5 px-1 rounded-sm transition-colors",
                   highlightedLines.has(i) && "bg-primary/10 border-l-2 border-primary"
@@ -70,7 +88,11 @@ export function SourceTextViewer({ rawText, highlightText }: SourceTextViewerPro
                   "text-secondary-foreground whitespace-pre-wrap break-all",
                   highlightedLines.has(i) && "text-foreground font-medium"
                 )}>
-                  {line || "\u00A0"}
+                  {searchTerms.length > 0 ? (
+                    <SearchHighlight text={line || "\u00A0"} terms={searchTerms} />
+                  ) : (
+                    line || "\u00A0"
+                  )}
                 </span>
               </div>
             ))}

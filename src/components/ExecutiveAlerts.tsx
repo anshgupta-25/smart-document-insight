@@ -65,6 +65,7 @@ function AlertCard({ alert }: { alert: ExecutiveAlert }) {
 
   return (
     <div
+      data-search-id={`alert-${alert.id}-0`}
       className={cn(
         "rounded-lg border p-3.5 transition-all duration-200 animate-slide-up cursor-pointer hover:shadow-card",
         config.bg
