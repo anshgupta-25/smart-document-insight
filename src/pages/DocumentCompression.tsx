@@ -6,7 +6,9 @@ import { ChunkViewer } from "@/components/ChunkViewer";
 import { MetricCard } from "@/components/MetricCard";
 import { TransparencyPanel } from "@/components/TransparencyPanel";
 import { SourceTextViewer } from "@/components/SourceTextViewer";
+import { ExtractionStatusBanner } from "@/components/ExtractionStatus";
 import { useDocumentStore } from "@/stores/documentStore";
+import { extractDocumentText, type ExtractionResult } from "@/lib/pdfExtractor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -16,16 +18,45 @@ export default function DocumentCompression() {
     setDocument, setChunks, setSummaries, setVerificationStats, setIsProcessing, setHighlightText
   } = useDocumentStore();
   const [activeTab, setActiveTab] = useState<"summary" | "chunks" | "json">("summary");
+  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
+  const [lastFile, setLastFile] = useState<File | null>(null);
 
-  const handleFileUpload = async (file: File) => {
+  const processFile = async (file: File) => {
     setIsProcessing(true);
+    setExtractionResult(null);
+    setLastFile(file);
 
     try {
-      const text = await file.text();
-      setDocument(file.name, text);
+      // Step 1: Extract text using proper PDF/text parser
+      const result = await extractDocumentText(file);
+      setExtractionResult(result);
 
+      // FAIL-SAFE: Block processing if extraction failed
+      if (result.status === "failed" || !result.text.trim()) {
+        toast({
+          title: "Extraction failed",
+          description: "Could not extract readable text. Please try a different file.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Warn but continue for OCR-needed status
+      if (result.status === "ocr-needed") {
+        toast({
+          title: "Limited extraction",
+          description: "Only partial text could be extracted. Results may be incomplete.",
+          variant: "destructive",
+        });
+      }
+
+      // Step 2: Store clean extracted text as ground truth
+      setDocument(file.name, result.text);
+
+      // Step 3: Send ONLY clean text to AI for compression
       const { data, error } = await supabase.functions.invoke("analyze-document", {
-        body: { action: "compress", text: text.slice(0, 30000), fileName: file.name },
+        body: { action: "compress", text: result.text.slice(0, 30000), fileName: file.name },
       });
 
       if (error) throw error;
@@ -33,12 +64,21 @@ export default function DocumentCompression() {
       setChunks(data.chunks || []);
       setSummaries(data.summaries || []);
       setVerificationStats(data.verificationStats || null);
-      toast({ title: "Document processed", description: `${data.chunks?.length || 0} chunks extracted — ${data.verificationStats?.verifiedFacts || 0} facts verified` });
+      toast({
+        title: "Document processed",
+        description: `${data.chunks?.length || 0} chunks extracted — ${data.verificationStats?.verifiedFacts || 0} facts verified`,
+      });
     } catch (err: any) {
       console.error("Processing error:", err);
       toast({ title: "Processing failed", description: err.message, variant: "destructive" });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleReExtract = () => {
+    if (lastFile) {
+      processFile(lastFile);
     }
   };
 
@@ -78,7 +118,17 @@ export default function DocumentCompression() {
       </div>
 
       {/* Upload area */}
-      <FileUpload onFileSelect={handleFileUpload} isProcessing={isProcessing} />
+      <FileUpload onFileSelect={processFile} isProcessing={isProcessing} />
+
+      {/* Extraction Status Banner */}
+      {extractionResult && (
+        <ExtractionStatusBanner
+          status={extractionResult.status}
+          pageCount={extractionResult.pageCount}
+          warnings={extractionResult.warnings}
+          onReExtract={handleReExtract}
+        />
+      )}
 
       {/* Transparency Panel + Metrics */}
       {chunks.length > 0 && verificationStats && (
@@ -105,7 +155,7 @@ export default function DocumentCompression() {
         </div>
       )}
 
-      {/* Original Source Text Viewer */}
+      {/* Extracted Text Preview (replaces raw file data) */}
       {rawText && chunks.length > 0 && (
         <SourceTextViewer rawText={rawText} highlightText={highlightText || undefined} />
       )}
