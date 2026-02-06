@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Mail, Lock, Loader2, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { Mail, Lock, Loader2, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { GhostCutBrand } from "@/components/GhostCutLogo";
 
 export default function Signup() {
   const { user, signUp, signInWithGoogle } = useAuth();
@@ -55,13 +56,11 @@ export default function Signup() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-8 animate-fade-in">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-primary shadow-glow">
-            <Zap className="w-7 h-7 text-primary-foreground" />
-          </div>
-          <div className="text-center">
+        <div className="flex flex-col items-center gap-4">
+          <GhostCutBrand size={56} showTagline className="flex-col items-center text-center" />
+          <div className="text-center mt-2">
             <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-            <p className="text-sm text-muted-foreground mt-1">Join GhostCut — Intelligent Document Platform</p>
+            <p className="text-sm text-muted-foreground mt-1">Join the intelligent document platform</p>
           </div>
         </div>
 
