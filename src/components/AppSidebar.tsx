@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { FileText, Search, BarChart3, Zap, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { FileText, Search, BarChart3, Zap, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 
 const navItems = [
   { title: "Compression Studio", url: "/", icon: FileText },
@@ -12,7 +13,8 @@ const navItems = [
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -54,8 +56,29 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      {/* Bottom section: Avatar + Collapse */}
+      {/* Bottom section */}
       <div className="border-t border-border">
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className={cn(
+            "flex items-center gap-3 w-full px-4 py-2.5 text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
+            collapsed && "justify-center"
+          )}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? (
+            <Sun className="w-4 h-4 shrink-0 text-warning" />
+          ) : (
+            <Moon className="w-4 h-4 shrink-0 text-primary" />
+          )}
+          {!collapsed && (
+            <span className="text-xs animate-fade-in">
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </span>
+          )}
+        </button>
+
         {/* User avatar */}
         {user && (
           <NavLink
