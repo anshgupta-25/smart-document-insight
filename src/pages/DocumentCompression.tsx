@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Download, Loader2, ShieldCheck, Layers, BarChart3 } from "lucide-react";
+import { FileText, Loader2, ShieldCheck, Layers, BarChart3 } from "lucide-react";
 import { FileUpload } from "@/components/FileUpload";
 import { SummaryPanel, type SummaryViewLevel } from "@/components/SummaryPanel";
 import { ChunkViewer } from "@/components/ChunkViewer";
@@ -7,6 +7,10 @@ import { MetricCard } from "@/components/MetricCard";
 import { TransparencyPanel } from "@/components/TransparencyPanel";
 import { SourceTextViewer } from "@/components/SourceTextViewer";
 import { ExtractionStatusBanner } from "@/components/ExtractionStatus";
+import { ExecutiveAlerts } from "@/components/ExecutiveAlerts";
+import { ExplainabilityPanel } from "@/components/ExplainabilityPanel";
+import { ReportExporter } from "@/components/ReportExporter";
+import { ImportanceLegend, type ImportanceLevel } from "@/components/ImportanceLegend";
 import { useDocumentStore } from "@/stores/documentStore";
 import { extractDocumentText, type ExtractionResult } from "@/lib/pdfExtractor";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,12 +19,15 @@ import { toast } from "@/hooks/use-toast";
 export default function DocumentCompression() {
   const {
     fileName, rawText, chunks, summaries, verificationStats, isProcessing, highlightText,
-    setDocument, setChunks, setSummaries, setVerificationStats, setIsProcessing, setHighlightText
+    executiveAlerts, aiDecisions,
+    setDocument, setChunks, setSummaries, setVerificationStats, setIsProcessing, setHighlightText,
+    setExecutiveAlerts, setAIDecisions
   } = useDocumentStore();
   const [activeTab, setActiveTab] = useState<"summary" | "chunks" | "json">("summary");
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
   const [lastFile, setLastFile] = useState<File | null>(null);
   const [summaryViewLevel, setSummaryViewLevel] = useState<SummaryViewLevel>("detailed");
+  const [importanceFilter, setImportanceFilter] = useState<ImportanceLevel | null>(null);
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
@@ -52,9 +59,11 @@ export default function DocumentCompression() {
       setChunks(data.chunks || []);
       setSummaries(data.summaries || []);
       setVerificationStats(data.verificationStats || null);
+      setExecutiveAlerts(data.executiveAlerts || []);
+      setAIDecisions(data.aiDecisions || []);
       toast({
         title: "Document compressed",
-        description: `${data.summaries?.length || 0} summary levels — ${data.verificationStats?.verifiedFacts || 0} facts verified`,
+        description: `${data.summaries?.length || 0} summary levels — ${data.verificationStats?.verifiedFacts || 0} facts verified — ${(data.executiveAlerts || []).length} alerts detected`,
       });
     } catch (err: any) {
       console.error("Processing error:", err);
@@ -68,17 +77,6 @@ export default function DocumentCompression() {
     if (lastFile) processFile(lastFile);
   };
 
-  const handleExportJSON = () => {
-    const exported = { fileName, summaries, chunks, verificationStats, exportedAt: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${fileName || "document"}-compressed.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -89,17 +87,16 @@ export default function DocumentCompression() {
             Compression Studio
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Multi-level hierarchical compression with fact verification
+            Multi-level hierarchical compression with fact verification & executive alerts
           </p>
         </div>
         {summaries.length > 0 && (
-          <button
-            onClick={handleExportJSON}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-          >
-            <Download className="w-4 h-4" />
-            Export JSON
-          </button>
+          <ReportExporter
+            fileName={fileName}
+            summaries={summaries}
+            verificationStats={verificationStats}
+            executiveAlerts={executiveAlerts}
+          />
         )}
       </div>
 
@@ -114,11 +111,19 @@ export default function DocumentCompression() {
         />
       )}
 
-      {/* Transparency Panel + Metrics */}
+      {/* Executive Alerts */}
+      {executiveAlerts.length > 0 && (
+        <ExecutiveAlerts alerts={executiveAlerts} />
+      )}
+
+      {/* Transparency Panel + Explainability + Metrics */}
       {chunks.length > 0 && verificationStats && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
             <TransparencyPanel stats={verificationStats} />
+            {aiDecisions.length > 0 && (
+              <ExplainabilityPanel decisions={aiDecisions} />
+            )}
           </div>
           <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4 content-start">
             <MetricCard label="Total Chunks" value={chunks.length} icon={<FileText className="w-5 h-5" />} />
@@ -169,17 +174,22 @@ export default function DocumentCompression() {
 
           <div className="animate-fade-in">
             {activeTab === "summary" && (
-              <SummaryPanel
-                sections={summaries}
-                onHighlightSource={(text) => setHighlightText(text)}
-                viewLevel={summaryViewLevel}
-                onViewLevelChange={setSummaryViewLevel}
-              />
+              <div className="space-y-4">
+                {/* Importance Legend & Filter */}
+                <ImportanceLegend filter={importanceFilter} onFilterChange={setImportanceFilter} />
+                <SummaryPanel
+                  sections={summaries}
+                  onHighlightSource={(text) => setHighlightText(text)}
+                  viewLevel={summaryViewLevel}
+                  onViewLevelChange={setSummaryViewLevel}
+                  importanceFilter={importanceFilter}
+                />
+              </div>
             )}
             {activeTab === "chunks" && <ChunkViewer chunks={chunks} title="Document Chunks" />}
             {activeTab === "json" && (
               <pre className="rounded-xl bg-card border border-border p-4 text-xs font-mono text-secondary-foreground overflow-auto max-h-[500px] scrollbar-thin">
-                {JSON.stringify({ fileName, summaries, chunks, verificationStats }, null, 2)}
+                {JSON.stringify({ fileName, summaries, chunks, verificationStats, executiveAlerts, aiDecisions }, null, 2)}
               </pre>
             )}
           </div>

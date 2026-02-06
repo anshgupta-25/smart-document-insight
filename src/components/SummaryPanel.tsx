@@ -1,9 +1,10 @@
 import { useState } from "react";
 import {
   ChevronDown, ChevronRight, FileText, Hash, Calendar,
-  AlertTriangle, MapPin, ShieldCheck, ShieldAlert, ShieldX, Eye, Layers
+  AlertTriangle, MapPin, ShieldCheck, ShieldAlert, ShieldX, Eye, Layers, Star, Circle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ImportanceBadge, type ImportanceLevel } from "@/components/ImportanceLegend";
 
 export interface SummarySection {
   id: string;
@@ -16,6 +17,11 @@ export interface SummarySection {
   verified?: boolean;
   verificationStatus?: "verified" | "unverified" | "conflict";
   verificationNote?: string;
+  importance?: {
+    level: ImportanceLevel;
+    score: number;
+    reason: string;
+  };
   extractedEntities?: {
     numbers: string[];
     dates: string[];
@@ -33,6 +39,7 @@ interface SummaryPanelProps {
   onHighlightSource?: (text: string) => void;
   viewLevel?: SummaryViewLevel;
   onViewLevelChange?: (level: SummaryViewLevel) => void;
+  importanceFilter?: ImportanceLevel | null;
 }
 
 const verificationBadge = {
@@ -59,6 +66,17 @@ const VIEW_LEVELS: { value: SummaryViewLevel; label: string; description: string
   { value: "evidence", label: "Evidence", description: "Full source evidence" },
 ];
 
+const importanceBorderStyle = {
+  critical: "border-l-4 border-l-warning",
+  important: "border-l-4 border-l-info",
+  supporting: "",
+};
+
+function shouldShow(section: SummarySection, filter: ImportanceLevel | null): boolean {
+  if (!filter) return true;
+  return section.importance?.level === filter;
+}
+
 /* ── Evidence Node (Level 3) ── */
 function EvidenceNode({
   section,
@@ -71,11 +89,14 @@ function EvidenceNode({
   const badge = verificationBadge[status];
 
   return (
-    <div className="ml-10 border-l-2 border-border pl-4 py-2 animate-fade-in">
+    <div className={cn("ml-10 border-l-2 border-border pl-4 py-2 animate-fade-in", section.importance && importanceBorderStyle[section.importance.level])}>
       <div className="flex items-center gap-2 mb-1 flex-wrap">
         <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1", badge.className)}>
           {badge.icon} {badge.label}
         </span>
+        {section.importance && (
+          <ImportanceBadge {...section.importance} />
+        )}
         {section.sourceRef && (
           <span className="text-[10px] font-mono text-muted-foreground">{section.sourceRef}</span>
         )}
@@ -106,20 +127,26 @@ function SectionSummaryNode({
   section,
   viewLevel,
   onHighlightSource,
+  importanceFilter,
 }: {
   section: SummarySection;
   viewLevel: SummaryViewLevel;
   onHighlightSource?: (text: string) => void;
+  importanceFilter?: ImportanceLevel | null;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [showEvidence, setShowEvidence] = useState(false);
   const status = section.verificationStatus || (section.verified ? "verified" : "unverified");
   const badge = verificationBadge[status];
   const hasEvidenceChildren = section.children && section.children.length > 0;
+  const filteredChildren = section.children?.filter((c) => shouldShow(c, importanceFilter || null)) || [];
 
   return (
     <div className="animate-fade-in">
-      <div className="border rounded-lg p-4 border-info/30 bg-info/5 ml-6 transition-all duration-200">
+      <div className={cn(
+        "border rounded-lg p-4 border-info/30 bg-info/5 ml-6 transition-all duration-200",
+        section.importance && importanceBorderStyle[section.importance.level]
+      )}>
         <div className="flex items-start gap-3">
           {hasEvidenceChildren && (
             <button
@@ -137,6 +164,9 @@ function SectionSummaryNode({
               <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1", badge.className)}>
                 {badge.icon} {badge.label}
               </span>
+              {section.importance && (
+                <ImportanceBadge {...section.importance} />
+              )}
               <h3 className="text-sm font-medium text-foreground truncate">{section.title}</h3>
             </div>
 
@@ -169,7 +199,6 @@ function SectionSummaryNode({
               </div>
             )}
 
-            {/* Evidence toggle for this section */}
             <div className="flex items-center gap-3 mt-3">
               {section.evidence && (
                 <button
@@ -202,10 +231,9 @@ function SectionSummaryNode({
         </div>
       </div>
 
-      {/* Level 3: Evidence children — only show when viewLevel is "evidence" and expanded */}
-      {viewLevel === "evidence" && expanded && hasEvidenceChildren && (
+      {viewLevel === "evidence" && expanded && filteredChildren.length > 0 && (
         <div className="space-y-1 mt-1">
-          {section.children!.map((child) => (
+          {filteredChildren.map((child) => (
             <EvidenceNode key={child.id} section={child} onHighlightSource={onHighlightSource} />
           ))}
         </div>
@@ -219,18 +247,23 @@ function ExecutiveNode({
   section,
   viewLevel,
   onHighlightSource,
+  importanceFilter,
 }: {
   section: SummarySection;
   viewLevel: SummaryViewLevel;
   onHighlightSource?: (text: string) => void;
+  importanceFilter?: ImportanceLevel | null;
 }) {
   const status = section.verificationStatus || (section.verified ? "verified" : "unverified");
   const badge = verificationBadge[status];
+  const filteredChildren = section.children?.filter((c) => shouldShow(c, importanceFilter || null)) || [];
 
   return (
     <div className="animate-fade-in space-y-3">
-      {/* Executive TL;DR card */}
-      <div className="border rounded-xl p-5 border-primary/40 bg-accent/20 transition-all duration-200">
+      <div className={cn(
+        "border rounded-xl p-5 border-primary/40 bg-accent/20 transition-all duration-200",
+        section.importance && importanceBorderStyle[section.importance.level]
+      )}>
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-primary/20 text-primary">
             executive summary
@@ -238,10 +271,12 @@ function ExecutiveNode({
           <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1", badge.className)}>
             {badge.icon} {badge.label}
           </span>
+          {section.importance && (
+            <ImportanceBadge {...section.importance} />
+          )}
           <h3 className="text-base font-semibold text-foreground">{section.title}</h3>
         </div>
 
-        {/* Render summary as bullet points for TL;DR feel */}
         <div className="space-y-1.5">
           {section.summary.split(/\n|(?:^|\s)[-•]\s/).filter(Boolean).map((point, i) => (
             <div key={i} className="flex items-start gap-2">
@@ -269,15 +304,15 @@ function ExecutiveNode({
         )}
       </div>
 
-      {/* Level 2: Section children — show when viewLevel is "detailed" or "evidence" */}
-      {viewLevel !== "tldr" && section.children && section.children.length > 0 && (
+      {viewLevel !== "tldr" && filteredChildren.length > 0 && (
         <div className="space-y-3">
-          {section.children.map((child) => (
+          {filteredChildren.map((child) => (
             <SectionSummaryNode
               key={child.id}
               section={child}
               viewLevel={viewLevel}
               onHighlightSource={onHighlightSource}
+              importanceFilter={importanceFilter}
             />
           ))}
         </div>
@@ -287,7 +322,7 @@ function ExecutiveNode({
 }
 
 /* ── Main Panel ── */
-export function SummaryPanel({ sections, onHighlightSource, viewLevel = "detailed", onViewLevelChange }: SummaryPanelProps) {
+export function SummaryPanel({ sections, onHighlightSource, viewLevel = "detailed", onViewLevelChange, importanceFilter }: SummaryPanelProps) {
   if (sections.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -329,17 +364,18 @@ export function SummaryPanel({ sections, onHighlightSource, viewLevel = "detaile
         <ShieldCheck className="w-5 h-5 text-warning shrink-0" />
         <p className="text-xs text-warning">
           <strong>Trust Mode Active:</strong> Summaries are generated only from verified source text.
-          Click "View Source Evidence" on any point to see proof.
+          Click "View Source Evidence" on any point to see proof. ⭐ = Critical, 🔵 = Important, ⚪ = Supporting.
         </p>
       </div>
 
       {/* Render summaries */}
-      {sections.map((section) => (
+      {sections.filter((s) => shouldShow(s, importanceFilter || null)).map((section) => (
         <ExecutiveNode
           key={section.id}
           section={section}
           viewLevel={viewLevel}
           onHighlightSource={onHighlightSource}
+          importanceFilter={importanceFilter}
         />
       ))}
     </div>

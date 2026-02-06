@@ -3,6 +3,8 @@ import type { SummarySection } from "@/components/SummaryPanel";
 import type { ChunkData } from "@/components/ChunkViewer";
 import type { AuditAlert } from "@/components/AuditAlerts";
 import type { VerificationStats } from "@/components/TransparencyPanel";
+import type { ExecutiveAlert } from "@/components/ExecutiveAlerts";
+import type { AIDecision } from "@/components/ExplainabilityPanel";
 
 export interface DocumentState {
   fileName: string | null;
@@ -10,6 +12,8 @@ export interface DocumentState {
   chunks: ChunkData[];
   summaries: SummarySection[];
   verificationStats: VerificationStats | null;
+  executiveAlerts: ExecutiveAlert[];
+  aiDecisions: AIDecision[];
   isProcessing: boolean;
   isAuditing: boolean;
   auditQuery: string;
@@ -26,6 +30,8 @@ export interface DocumentState {
   setChunks: (chunks: ChunkData[]) => void;
   setSummaries: (summaries: SummarySection[]) => void;
   setVerificationStats: (stats: VerificationStats | null) => void;
+  setExecutiveAlerts: (alerts: ExecutiveAlert[]) => void;
+  setAIDecisions: (decisions: AIDecision[]) => void;
   setIsProcessing: (v: boolean) => void;
   setIsAuditing: (v: boolean) => void;
   setAuditQuery: (q: string) => void;
@@ -40,6 +46,8 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   chunks: [],
   summaries: [],
   verificationStats: null,
+  executiveAlerts: [],
+  aiDecisions: [],
   isProcessing: false,
   isAuditing: false,
   auditQuery: "",
@@ -49,6 +57,8 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   setChunks: (chunks) => set({ chunks }),
   setSummaries: (summaries) => set({ summaries }),
   setVerificationStats: (verificationStats) => set({ verificationStats }),
+  setExecutiveAlerts: (executiveAlerts) => set({ executiveAlerts }),
+  setAIDecisions: (aiDecisions) => set({ aiDecisions }),
   setIsProcessing: (isProcessing) => set({ isProcessing }),
   setIsAuditing: (isAuditing) => set({ isAuditing }),
   setAuditQuery: (auditQuery) => set({ auditQuery }),
@@ -60,6 +70,8 @@ export const useDocumentStore = create<DocumentState>((set) => ({
     chunks: [],
     summaries: [],
     verificationStats: null,
+    executiveAlerts: [],
+    aiDecisions: [],
     isProcessing: false,
     isAuditing: false,
     auditQuery: "",

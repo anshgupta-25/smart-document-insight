@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { JudgeDemoMode } from "@/components/JudgeDemoMode";
 import DocumentCompression from "./pages/DocumentCompression";
 import RetrievalAudit from "./pages/RetrievalAudit";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </DashboardLayout>
+        <JudgeDemoMode />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
