@@ -1,17 +1,22 @@
 import { useState } from "react";
-import { FileText, Search, BarChart3, User, Zap, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Search, BarChart3, Zap, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { title: "Compression Studio", url: "/", icon: FileText },
   { title: "Retrieval Audit Lab", url: "/retrieval-audit", icon: Search },
   { title: "Intelligence Dashboard", url: "/analytics", icon: BarChart3 },
-  { title: "Verified Profile", url: "/profile", icon: User },
 ];
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
+  const avatarUrl = user?.user_metadata?.avatar_url;
+  const initials = displayName.charAt(0).toUpperCase();
 
   return (
     <aside
@@ -49,13 +54,39 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center p-3 border-t border-border text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-      </button>
+      {/* Bottom section: Avatar + Collapse */}
+      <div className="border-t border-border">
+        {/* User avatar */}
+        {user && (
+          <NavLink
+            to="/profile"
+            className="flex items-center gap-3 px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover border border-border shrink-0" />
+            ) : (
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/15 text-primary text-xs font-semibold shrink-0">
+                {initials}
+              </div>
+            )}
+            {!collapsed && (
+              <div className="flex-1 min-w-0 animate-fade-in">
+                <p className="text-xs font-medium text-foreground truncate">{displayName}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+              </div>
+            )}
+          </NavLink>
+        )}
+
+        {/* Collapse toggle */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center justify-center w-full p-3 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+      </div>
     </aside>
   );
 }
