@@ -7,6 +7,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import DocumentCompression from "./pages/DocumentCompression";
 import RetrievalAudit from "./pages/RetrievalAudit";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import VerifiedProfile from "./pages/VerifiedProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
             <Route path="/" element={<DocumentCompression />} />
             <Route path="/retrieval-audit" element={<RetrievalAudit />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/profile" element={<VerifiedProfile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </DashboardLayout>

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { FileText, Search, BarChart3, Zap, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Search, BarChart3, User, Zap, ChevronLeft, ChevronRight } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { title: "Document Compression", url: "/", icon: FileText },
-  { title: "Retrieval Audit", url: "/retrieval-audit", icon: Search },
-  { title: "Analytics Dashboard", url: "/analytics", icon: BarChart3 },
+  { title: "Compression Studio", url: "/", icon: FileText },
+  { title: "Retrieval Audit Lab", url: "/retrieval-audit", icon: Search },
+  { title: "Intelligence Dashboard", url: "/analytics", icon: BarChart3 },
+  { title: "Verified Profile", url: "/profile", icon: User },
 ];
 
 export function AppSidebar() {
