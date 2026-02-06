@@ -1,4 +1,4 @@
-import { ShieldCheck, ShieldAlert, ShieldX, Activity, Eye } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldX, Activity, Eye, Gauge, BarChart3, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface VerificationStats {
@@ -8,6 +8,11 @@ export interface VerificationStats {
   conflictFacts: number;
   confidenceScore: number;
   hallucinationRisk: "low" | "medium" | "high";
+  compressionRatio?: number;
+  redundancyScore?: number;
+  abstractionLevel?: string;
+  sourceWordCount?: number;
+  summaryWordCount?: number;
 }
 
 interface TransparencyPanelProps {
@@ -33,6 +38,13 @@ export function TransparencyPanel({ stats }: TransparencyPanelProps) {
     high: "High Risk",
   };
 
+  const abstractionColors: Record<string, string> = {
+    high: "text-success bg-success/10 border-success/30",
+    medium: "text-info bg-info/10 border-info/30",
+    low: "text-warning bg-warning/10 border-warning/30",
+    none: "text-muted-foreground bg-muted border-border",
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       <div className="flex items-center gap-2">
@@ -52,10 +64,8 @@ export function TransparencyPanel({ stats }: TransparencyPanelProps) {
           <div
             className={cn(
               "h-full rounded-full transition-all duration-700",
-              stats.confidenceScore >= 80
-                ? "bg-success"
-                : stats.confidenceScore >= 50
-                ? "bg-warning"
+              stats.confidenceScore >= 80 ? "bg-success"
+                : stats.confidenceScore >= 50 ? "bg-warning"
                 : "bg-destructive"
             )}
             style={{ width: `${stats.confidenceScore}%` }}
@@ -84,6 +94,72 @@ export function TransparencyPanel({ stats }: TransparencyPanelProps) {
           </div>
         </div>
       </div>
+
+      {/* Compression Quality Metrics */}
+      {stats.compressionRatio !== undefined && (
+        <div className="space-y-2 pt-2 border-t border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-medium text-foreground">Compression Quality</span>
+          </div>
+
+          {/* Compression Ratio */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Gauge className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Compression Ratio</span>
+            </div>
+            <span className="text-xs font-mono font-semibold text-foreground">
+              {stats.compressionRatio}%
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-700",
+                stats.compressionRatio >= 60 ? "bg-success"
+                  : stats.compressionRatio >= 30 ? "bg-info"
+                  : "bg-warning"
+              )}
+              style={{ width: `${Math.min(stats.compressionRatio, 100)}%` }}
+            />
+          </div>
+          {stats.sourceWordCount !== undefined && stats.summaryWordCount !== undefined && (
+            <p className="text-[10px] text-muted-foreground">
+              {stats.sourceWordCount} words → {stats.summaryWordCount} words
+            </p>
+          )}
+
+          {/* Redundancy Score */}
+          {stats.redundancyScore !== undefined && (
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-muted-foreground">Deduplication</span>
+              <span className={cn(
+                "text-xs font-mono font-semibold",
+                stats.redundancyScore >= 80 ? "text-success" : stats.redundancyScore >= 50 ? "text-warning" : "text-destructive"
+              )}>
+                {stats.redundancyScore}%
+              </span>
+            </div>
+          )}
+
+          {/* Abstraction Level */}
+          {stats.abstractionLevel && (
+            <div className="flex items-center justify-between mt-1">
+              <div className="flex items-center gap-1.5">
+                <Layers className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Abstraction</span>
+              </div>
+              <span className={cn(
+                "text-[10px] font-mono px-2 py-0.5 rounded border",
+                abstractionColors[stats.abstractionLevel] || abstractionColors.none
+              )}>
+                {stats.abstractionLevel.charAt(0).toUpperCase() + stats.abstractionLevel.slice(1)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Hallucination Risk */}
       <div
