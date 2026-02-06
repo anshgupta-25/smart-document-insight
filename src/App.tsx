@@ -6,10 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { SidebarStateProvider } from "@/hooks/useSidebarState";
-import { JudgeSearchProvider } from "@/hooks/useJudgeSearch";
+import { AuditSearchProvider } from "@/hooks/useAuditSearch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { JudgeDemoMode } from "@/components/JudgeDemoMode";
+import { AuditMode } from "@/components/AuditMode";
 import DocumentCompression from "./pages/DocumentCompression";
 import RetrievalAudit from "./pages/RetrievalAudit";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
@@ -29,7 +29,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <SidebarStateProvider>
-          <JudgeSearchProvider>
+          <AuditSearchProvider>
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
@@ -78,8 +78,8 @@ const App = () => (
               />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <JudgeDemoMode />
-          </JudgeSearchProvider>
+            <AuditMode />
+          </AuditSearchProvider>
           </SidebarStateProvider>
         </AuthProvider>
       </BrowserRouter>

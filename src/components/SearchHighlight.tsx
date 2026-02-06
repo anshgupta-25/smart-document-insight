@@ -8,8 +8,8 @@ interface SearchHighlightProps {
 }
 
 /**
- * Renders text with highlighted search terms using colored markers.
- * Each term gets a different highlight color for multi-term support.
+ * Renders text with marker-style highlighted search terms.
+ * Uses a real-highlighter underline effect for a professional audit look.
  */
 export function SearchHighlight({ text, terms, className }: SearchHighlightProps) {
   if (!terms.length || !text) {
@@ -27,14 +27,15 @@ export function SearchHighlight({ text, terms, className }: SearchHighlightProps
           t => part.toLowerCase() === t.toLowerCase()
         );
         if (termIdx >= 0) {
+          const color = HIGHLIGHT_COLORS[termIdx % HIGHLIGHT_COLORS.length];
           return (
             <mark
               key={i}
               className="search-highlight"
               style={{
-                background: HIGHLIGHT_COLORS[termIdx % HIGHLIGHT_COLORS.length],
-                borderRadius: "3px",
-                padding: "1px 2px",
+                background: `linear-gradient(transparent 60%, ${color} 60%)`,
+                borderRadius: "2px",
+                padding: "0 2px",
                 color: "inherit",
               }}
             >
