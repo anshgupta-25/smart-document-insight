@@ -68,10 +68,7 @@ async function callAI(messages: any[], LOVABLE_API_KEY: string, tools?: any[], t
 
 /* ──────────────────────────────────────────────
    MULTI-LEVEL HIERARCHICAL COMPRESSION PIPELINE
-   Level 1: Executive TL;DR (5 bullet max)
-   Level 2: Section Summaries (abstracted insights)
-   Level 3: Evidence Layer (exact quotes + refs)
-   + Cross-chunk reasoning & deduplication
+   + Executive Alerts + Importance Detection + AI Explainability
    ────────────────────────────────────────────── */
 
 async function handleCompress(text: string, fileName: string, apiKey: string) {
@@ -79,7 +76,7 @@ async function handleCompress(text: string, fileName: string, apiKey: string) {
   const rawChunks = createChunksWithReferences(text, lines);
   const sourceWordCount = text.split(/\s+/).length;
 
-  const systemPrompt = `You are an expert document intelligence AI that produces MULTI-LEVEL HIERARCHICAL COMPRESSION.
+  const systemPrompt = `You are an expert document intelligence AI that produces MULTI-LEVEL HIERARCHICAL COMPRESSION with executive alerts and importance detection.
 
 CRITICAL RULES:
 1. ONLY use text directly present in the source document. NEVER invent or infer.
@@ -87,55 +84,59 @@ CRITICAL RULES:
 3. Preserve original wording, names, dates, numbers EXACTLY.
 4. If information is missing, output "Not present in source document".
 
-YOUR TASK — Generate THREE levels of compression:
+YOUR TASK — Generate THREE levels of compression PLUS executive alerts and importance scores:
 
 LEVEL 1 — EXECUTIVE SUMMARY (id prefix: "exec-"):
 - Create ONE document-level summary node with level="document"
 - The "summary" field = 3-5 concise bullet points capturing the MOST important facts
-- This is a TL;DR — high-level takeaways only, NOT raw sentences
-- Cross-reference ALL chunks to find the big picture
-- Deduplicate repeated information across chunks
+- Cross-reference ALL chunks, deduplicate repeated information
 - The "evidence" field = key supporting quotes concatenated
+- Add "importance" field with level ("critical"/"important"/"supporting"), score (0-100), and reason
 
 LEVEL 2 — SECTION SUMMARIES (id prefix: "sec-"):
 - Create these as "children" of the executive summary node
 - Each child has level="chapter"
-- Group related chunks into logical THEMATIC sections (e.g., for resumes: Education, Skills, Projects, Achievements)
-- Each section summary = ONE short paragraph (2-3 sentences) that ABSTRACTS and SYNTHESIZES multiple chunks
-- Do NOT copy-paste raw text — restructure it into intelligent insights
-- Remove redundancy — if the same fact appears in multiple chunks, mention it ONCE
-- The "evidence" field = the exact source quotes supporting the section summary
+- Group related chunks into logical THEMATIC sections
+- Each section = ONE short paragraph (2-3 sentences) that ABSTRACTS and SYNTHESIZES
+- Add "importance" field for each section
 
 LEVEL 3 — EVIDENCE DETAILS (id prefix: "ev-"):
 - Create these as "children" of each section summary
 - Each child has level="section"
-- These are individual verified facts with exact original wording
-- The "summary" field = the specific fact/claim
-- The "evidence" field = the EXACT original sentence from source
+- Individual verified facts with exact original wording
+- Add "importance" field for each fact
+
+EXECUTIVE ALERTS — Detect and return:
+- Deadlines (dates with associated actions)
+- Risks (potential problems, warnings)
+- Financial impacts (costs, revenue, budgets, amounts)
+- Policy violations or compliance issues
+- Critical decisions or action items
+Each alert needs: category, severity (high/medium/low), title, description, evidence, recommendation
+
+AI DECISIONS — For each major AI decision, explain:
+- What action was taken (e.g., "Merged 3 education chunks into single section")
+- Why (the reason)
+- Evidence supporting the decision
+- Confidence level (0-100)
 
 FOR RESUMES specifically, organize sections as:
 - Profile Overview, Education, Achievements, Technical Skills, Projects, Certifications/Activities
 
-ENTITIES: Extract numbers, dates, risks, constraints, exceptions from source text only.
-
-QUALITY REQUIREMENTS:
-- Executive summary must be SHORT and scannable (judge-friendly)
-- Section summaries must show UNDERSTANDING, not just extraction
-- Evidence layer preserves exact wording for verification
-- Total summary word count should be 30-50% of source (real compression)`;
+ENTITIES: Extract numbers, dates, risks, constraints, exceptions from source text only.`;
 
   const tools = [
     {
       type: "function",
       function: {
         name: "hierarchical_compression",
-        description: "Return multi-level hierarchical document compression",
+        description: "Return multi-level hierarchical document compression with alerts and explainability",
         parameters: {
           type: "object",
           properties: {
             summaries: {
               type: "array",
-              description: "Should contain ONE document-level executive summary with section children, each with evidence children",
+              description: "ONE document-level executive summary with section children, each with evidence children",
               items: {
                 type: "object",
                 properties: {
@@ -147,6 +148,16 @@ QUALITY REQUIREMENTS:
                   sourceRef: { type: "string", description: "Line range reference e.g. 'Lines 1-50'" },
                   verified: { type: "boolean" },
                   verificationNote: { type: "string" },
+                  importance: {
+                    type: "object",
+                    properties: {
+                      level: { type: "string", enum: ["critical", "important", "supporting"] },
+                      score: { type: "number", description: "0-100 importance score" },
+                      reason: { type: "string" },
+                    },
+                    required: ["level", "score", "reason"],
+                    additionalProperties: false,
+                  },
                   extractedEntities: {
                     type: "object",
                     properties: {
@@ -172,6 +183,16 @@ QUALITY REQUIREMENTS:
                         sourceRef: { type: "string" },
                         verified: { type: "boolean" },
                         verificationNote: { type: "string" },
+                        importance: {
+                          type: "object",
+                          properties: {
+                            level: { type: "string", enum: ["critical", "important", "supporting"] },
+                            score: { type: "number" },
+                            reason: { type: "string" },
+                          },
+                          required: ["level", "score", "reason"],
+                          additionalProperties: false,
+                        },
                         extractedEntities: {
                           type: "object",
                           properties: {
@@ -197,6 +218,16 @@ QUALITY REQUIREMENTS:
                               sourceRef: { type: "string" },
                               verified: { type: "boolean" },
                               verificationNote: { type: "string" },
+                              importance: {
+                                type: "object",
+                                properties: {
+                                  level: { type: "string", enum: ["critical", "important", "supporting"] },
+                                  score: { type: "number" },
+                                  reason: { type: "string" },
+                                },
+                                required: ["level", "score", "reason"],
+                                additionalProperties: false,
+                              },
                             },
                             required: ["id", "title", "level", "summary", "evidence", "verified"],
                             additionalProperties: false,
@@ -225,8 +256,42 @@ QUALITY REQUIREMENTS:
               required: ["totalFacts", "verifiedFacts", "unverifiedFacts", "conflictFacts", "confidenceScore", "hallucinationRisk"],
               additionalProperties: false,
             },
+            executiveAlerts: {
+              type: "array",
+              description: "Auto-detected deadlines, risks, financial impacts, policy issues",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  category: { type: "string", enum: ["deadline", "risk", "financial", "policy", "critical"] },
+                  severity: { type: "string", enum: ["high", "medium", "low"] },
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  evidence: { type: "string" },
+                  recommendation: { type: "string" },
+                },
+                required: ["id", "category", "severity", "title", "description", "evidence"],
+                additionalProperties: false,
+              },
+            },
+            aiDecisions: {
+              type: "array",
+              description: "Explain each major AI decision made during compression",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  action: { type: "string" },
+                  reason: { type: "string" },
+                  evidence: { type: "string" },
+                  confidence: { type: "number" },
+                },
+                required: ["id", "action", "reason", "evidence", "confidence"],
+                additionalProperties: false,
+              },
+            },
           },
-          required: ["summaries", "verificationStats"],
+          required: ["summaries", "verificationStats", "executiveAlerts", "aiDecisions"],
           additionalProperties: false,
         },
       },
@@ -244,7 +309,7 @@ QUALITY REQUIREMENTS:
       { role: "system", content: systemPrompt },
       {
         role: "user",
-        content: `Analyze and compress this document titled "${fileName}". Produce a 3-level hierarchical summary. Cross-reference chunks, deduplicate, and abstract into intelligent insights.\n\nSOURCE DOCUMENT (${rawChunks.length} chunks):\n${chunkedText}`,
+        content: `Analyze and compress this document titled "${fileName}". Produce a 3-level hierarchical summary with executive alerts and importance detection.\n\nSOURCE DOCUMENT (${rawChunks.length} chunks):\n${chunkedText}`,
       },
     ],
     apiKey,
@@ -281,6 +346,8 @@ QUALITY REQUIREMENTS:
         sourceWordCount,
         summaryWordCount,
       },
+      executiveAlerts: parsed.executiveAlerts || [],
+      aiDecisions: parsed.aiDecisions || [],
       rawTextPreview: text.slice(0, 2000),
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -379,14 +446,13 @@ function countSummaryWords(summaries: any[]): number {
   return count;
 }
 
-/** Compute redundancy score — how many duplicate phrases exist across summaries */
+/** Compute redundancy score */
 function computeRedundancyScore(summaries: any[]): number {
   const phrases: string[] = [];
 
   function collect(items: any[]) {
     for (const item of items) {
       const words = (item.summary || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 4);
-      // Create 3-grams
       for (let i = 0; i < words.length - 2; i++) {
         phrases.push(words.slice(i, i + 3).join(" "));
       }
@@ -395,24 +461,21 @@ function computeRedundancyScore(summaries: any[]): number {
   }
 
   collect(summaries);
-
   if (phrases.length === 0) return 100;
 
   const unique = new Set(phrases);
   const redundancyRatio = 1 - unique.size / phrases.length;
-  // 0 = no redundancy (good), 100 = all duplicates (bad)
-  // Invert: score 100 = no redundancy (best), 0 = all duplicates
   return Math.round((1 - redundancyRatio) * 100);
 }
 
-/** Compute abstraction level — how different summaries are from raw source text */
+/** Compute abstraction level */
 function computeAbstractionLevel(summaries: any[], sourceText: string): string {
   const sourceWords = new Set(sourceText.toLowerCase().split(/\s+/).filter((w: string) => w.length > 4));
   const summaryWords: string[] = [];
 
   function collect(items: any[]) {
     for (const item of items) {
-      if (item.level !== "section") { // Only check non-evidence levels
+      if (item.level !== "section") {
         summaryWords.push(...(item.summary || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 4));
       }
       if (item.children) collect(item.children);
@@ -420,13 +483,11 @@ function computeAbstractionLevel(summaries: any[], sourceText: string): string {
   }
 
   collect(summaries);
-
   if (summaryWords.length === 0) return "none";
 
   const overlapCount = summaryWords.filter(w => sourceWords.has(w)).length;
   const overlapRatio = overlapCount / summaryWords.length;
 
-  // Lower overlap = higher abstraction
   if (overlapRatio < 0.5) return "high";
   if (overlapRatio < 0.7) return "medium";
   return "low";
