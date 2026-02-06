@@ -79,7 +79,7 @@ async function handleCompress(text: string, fileName: string, apiKey: string) {
   const rawChunks = createChunksWithReferences(text, lines);
   const sourceWordCount = text.split(/\s+/).length;
 
-  const systemPrompt = `You are an expert document intelligence AI that produces MULTI-LEVEL HIERARCHICAL COMPRESSION.
+  const systemPrompt = `You are an expert document intelligence AI that produces MULTI-LEVEL HIERARCHICAL COMPRESSION with IMPORTANCE CLASSIFICATION.
 
 CRITICAL RULES:
 1. ONLY use text directly present in the source document. NEVER invent or infer.
@@ -87,7 +87,7 @@ CRITICAL RULES:
 3. Preserve original wording, names, dates, numbers EXACTLY.
 4. If information is missing, output "Not present in source document".
 
-YOUR TASK — Generate THREE levels of compression:
+YOUR TASK — Generate THREE levels of compression WITH importance scoring:
 
 LEVEL 1 — EXECUTIVE SUMMARY (id prefix: "exec-"):
 - Create ONE document-level summary node with level="document"
@@ -100,7 +100,7 @@ LEVEL 1 — EXECUTIVE SUMMARY (id prefix: "exec-"):
 LEVEL 2 — SECTION SUMMARIES (id prefix: "sec-"):
 - Create these as "children" of the executive summary node
 - Each child has level="chapter"
-- Group related chunks into logical THEMATIC sections (e.g., for resumes: Education, Skills, Projects, Achievements)
+- Group related chunks into logical THEMATIC sections
 - Each section summary = ONE short paragraph (2-3 sentences) that ABSTRACTS and SYNTHESIZES multiple chunks
 - Do NOT copy-paste raw text — restructure it into intelligent insights
 - Remove redundancy — if the same fact appears in multiple chunks, mention it ONCE
@@ -113,6 +113,28 @@ LEVEL 3 — EVIDENCE DETAILS (id prefix: "ev-"):
 - The "summary" field = the specific fact/claim
 - The "evidence" field = the EXACT original sentence from source
 
+IMPORTANCE CLASSIFICATION — For EVERY node (all levels), assign:
+- "importance": one of "critical", "important", or "supporting"
+- "importanceScore": integer 0-100 indicating semantic importance
+- "importanceReason": short explanation of WHY this is important (1 sentence)
+
+IMPORTANCE RULES BY DOCUMENT TYPE:
+- Resume → ⭐ Critical: achievements with measurable impact, key skills, certifications. 🔵 Important: education, notable projects. ⚪ Supporting: activities, contact info.
+- Policy/Legal → ⭐ Critical: rules, penalties, deadlines, obligations, legal constraints. 🔵 Important: procedures, compliance requirements. ⚪ Supporting: definitions, context.
+- Report → ⭐ Critical: conclusions, key findings, financial figures, risks. 🔵 Important: methodology, recommendations. ⚪ Supporting: background, appendices.
+- Contract → ⭐ Critical: obligations, termination clauses, payment terms, liability. 🔵 Important: scope, timelines. ⚪ Supporting: definitions, recitals.
+- Technical/Logs → ⭐ Critical: errors, failures, security issues. 🔵 Important: warnings, performance metrics. ⚪ Supporting: info-level logs, trace data.
+- General → ⭐ Critical: key decisions, deadlines, action items, financial figures, risks. 🔵 Important: responsibilities, performance metrics, conclusions. ⚪ Supporting: context, background.
+
+DETECT AND HIGHLIGHT these content categories:
+- Key decisions and conclusions
+- Deadlines and time-sensitive items
+- Financial figures and metrics
+- Risks and warnings
+- Legal constraints and obligations
+- Exceptions and edge cases
+- Action items and responsibilities
+
 FOR RESUMES specifically, organize sections as:
 - Profile Overview, Education, Achievements, Technical Skills, Projects, Certifications/Activities
 
@@ -122,7 +144,8 @@ QUALITY REQUIREMENTS:
 - Executive summary must be SHORT and scannable (judge-friendly)
 - Section summaries must show UNDERSTANDING, not just extraction
 - Evidence layer preserves exact wording for verification
-- Total summary word count should be 30-50% of source (real compression)`;
+- Total summary word count should be 30-50% of source (real compression)
+- At least 20% of items should be ⭐ Critical, 40% 🔵 Important, rest ⚪ Supporting`;
 
   const tools = [
     {
@@ -147,6 +170,9 @@ QUALITY REQUIREMENTS:
                   sourceRef: { type: "string", description: "Line range reference e.g. 'Lines 1-50'" },
                   verified: { type: "boolean" },
                   verificationNote: { type: "string" },
+                  importance: { type: "string", enum: ["critical", "important", "supporting"] },
+                  importanceScore: { type: "number", description: "0-100 importance score" },
+                  importanceReason: { type: "string", description: "Why this is important" },
                   extractedEntities: {
                     type: "object",
                     properties: {
@@ -172,6 +198,9 @@ QUALITY REQUIREMENTS:
                         sourceRef: { type: "string" },
                         verified: { type: "boolean" },
                         verificationNote: { type: "string" },
+                        importance: { type: "string", enum: ["critical", "important", "supporting"] },
+                        importanceScore: { type: "number" },
+                        importanceReason: { type: "string" },
                         extractedEntities: {
                           type: "object",
                           properties: {
@@ -197,18 +226,21 @@ QUALITY REQUIREMENTS:
                               sourceRef: { type: "string" },
                               verified: { type: "boolean" },
                               verificationNote: { type: "string" },
+                              importance: { type: "string", enum: ["critical", "important", "supporting"] },
+                              importanceScore: { type: "number" },
+                              importanceReason: { type: "string" },
                             },
-                            required: ["id", "title", "level", "summary", "evidence", "verified"],
+                            required: ["id", "title", "level", "summary", "evidence", "verified", "importance", "importanceScore", "importanceReason"],
                             additionalProperties: false,
                           },
                         },
                       },
-                      required: ["id", "title", "level", "summary", "evidence", "verified"],
+                      required: ["id", "title", "level", "summary", "evidence", "verified", "importance", "importanceScore", "importanceReason"],
                       additionalProperties: false,
                     },
                   },
                 },
-                required: ["id", "title", "level", "summary", "evidence", "verified"],
+                required: ["id", "title", "level", "summary", "evidence", "verified", "importance", "importanceScore", "importanceReason"],
                 additionalProperties: false,
               },
             },
