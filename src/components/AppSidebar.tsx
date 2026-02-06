@@ -34,7 +34,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="animate-fade-in min-w-0">
             <h1 className="text-sm font-bold text-foreground tracking-tight whitespace-nowrap">
-              GHOST<span className="text-destructive">CUT</span>
+              GHOST<span className="text-primary">CUT</span>
             </h1>
             <p className="text-[10px] text-muted-foreground font-mono tracking-wider truncate">
               Cutting Hallucinations Out of AI

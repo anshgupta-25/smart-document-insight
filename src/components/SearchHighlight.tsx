@@ -8,8 +8,8 @@ interface SearchHighlightProps {
 }
 
 /**
- * Renders text with marker-style highlighted search terms.
- * Uses a real-highlighter underline effect for a professional audit look.
+ * Renders text with real-marker-style highlighted search terms.
+ * Uses a handwritten underline gradient effect.
  */
 export function SearchHighlight({ text, terms, className }: SearchHighlightProps) {
   if (!terms.length || !text) {
@@ -33,7 +33,7 @@ export function SearchHighlight({ text, terms, className }: SearchHighlightProps
               key={i}
               className="search-highlight"
               style={{
-                background: `linear-gradient(transparent 60%, ${color} 60%)`,
+                background: `linear-gradient(transparent 55%, ${color} 55%)`,
                 borderRadius: "2px",
                 padding: "0 2px",
                 color: "inherit",

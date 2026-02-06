@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Search, X, ChevronUp, ChevronDown, FileText, AlertTriangle,
-  Layers, Eye, Hash, Shield
+  Layers, Eye, Hash, Ghost
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SearchMatch } from "@/hooks/useDocumentSearch";
@@ -101,7 +101,7 @@ export function AuditSearchBar({
       <div className="rounded-xl border border-border bg-card/98 backdrop-blur-xl shadow-elevated overflow-visible">
         {/* Search input row */}
         <div className="flex items-center gap-2 px-3 py-2">
-          <Shield className="w-4 h-4 text-primary shrink-0" />
+          <Ghost className="w-4 h-4 text-primary shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -114,7 +114,7 @@ export function AuditSearchBar({
             onFocus={() => {
               if (query.length >= 2) setShowSuggestions(true);
             }}
-            placeholder="Search evidence..."
+            placeholder="Search evidence, names, facts…"
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
 
@@ -159,7 +159,7 @@ export function AuditSearchBar({
           <button
             onClick={onClose}
             className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-            title="Close Audit Mode (Esc)"
+            title="Close Ghost Mode (Esc)"
           >
             <X className="w-4 h-4" />
           </button>
