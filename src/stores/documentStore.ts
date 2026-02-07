@@ -5,6 +5,8 @@ import type { AuditAlert } from "@/components/AuditAlerts";
 import type { VerificationStats } from "@/components/TransparencyPanel";
 import type { ExecutiveAlert } from "@/components/ExecutiveAlerts";
 import type { AIDecision } from "@/components/ExplainabilityPanel";
+import type { ExtractedAnswer } from "@/components/AnswerExtractionPanel";
+import type { CoverageItem } from "@/components/CoverageHeatmap";
 
 export interface DocumentState {
   fileName: string | null;
@@ -20,10 +22,11 @@ export interface DocumentState {
   auditResults: {
     retrievedChunks: ChunkData[];
     integrityScore: number;
-    coverageData: { label: string; coverage: number }[];
+    coverageData: CoverageItem[];
     alerts: AuditAlert[];
     explanation: string;
     suggestions: string[];
+    extractedAnswer?: ExtractedAnswer;
   } | null;
   highlightText: string | null;
   setDocument: (fileName: string, rawText: string) => void;
