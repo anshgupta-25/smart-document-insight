@@ -110,7 +110,7 @@ export function GhostCutBrand({ size = 36, showTagline = false, className = "" }
         </h1>
         {showTagline && (
           <p className="text-[10px] text-muted-foreground font-mono tracking-wider leading-tight truncate">
-            Cutting Hallucinations Out of AI
+            Where Evidence Meets Intelligence
           </p>
         )}
       </div>

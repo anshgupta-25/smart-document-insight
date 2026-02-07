@@ -37,7 +37,7 @@ export function AppSidebar() {
               GHOST<span className="text-primary">CUT</span>
             </h1>
             <p className="text-[10px] text-muted-foreground font-mono tracking-wider truncate">
-              Cutting Hallucinations Out of AI
+              Where Evidence Meets Intelligence
             </p>
           </div>
         )}
