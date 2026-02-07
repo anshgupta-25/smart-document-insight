@@ -10,10 +10,13 @@
 [![Gemini AI](https://img.shields.io/badge/Gemini_2.5-FF6F61?style=for-the-badge&logo=google&logoColor=white)](#)
 [![Team Avengers](https://img.shields.io/badge/Team-Avengers-red?style=for-the-badge&logo=marvel&logoColor=white)](#)
 [![Website](https://img.shields.io/badge/🌐-anshguptaa.in-2DB8A1?style=for-the-badge)](https://anshguptaa.in)
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-smart--document--insight.lovable.app-blueviolet?style=for-the-badge)](https://smart-document-insight.lovable.app)
 
 <br/>
 
 **An enterprise-grade AI document intelligence platform that eliminates hallucinations through verified, evidence-backed retrieval and contextual compression.**
+
+🔗 **[Try the Live Demo →](https://smart-document-insight.lovable.app)**
 
 <br/>
 
@@ -87,89 +90,50 @@ GhostCut is not another chatbot. It's a **trust engine** for AI-powered document
 
 ## 🏗️ System Architecture
 
-<div align="center">
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        📄 DOCUMENT INPUT                        │
-│                     PDF Upload & Extraction                      │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    🔪 PROCESSING PIPELINE                        │
-│                                                                  │
-│   ┌──────────┐    ┌──────────────┐    ┌───────────────────┐     │
-│   │ PDF Parse │───▶│ Sanitization │───▶│ Content Validation│     │
-│   │ (pdfjs)  │    │ (Binary/Ctrl │    │ (Human-Readable   │     │
-│   │          │    │  Removal)    │    │  Check)           │     │
-│   └──────────┘    └──────────────┘    └────────┬──────────┘     │
-│                                                 │                │
-│   ┌──────────────────────────────────────────────┘               │
-│   │                                                              │
-│   ▼                                                              │
-│   ┌────────────────┐    ┌─────────────────┐                     │
-│   │ Line-Indexed   │───▶│ Hierarchical    │                     │
-│   │ Chunking       │    │ Compression     │                     │
-│   │ (Page:Line Ref)│    │ (3 Levels)      │                     │
-│   └────────────────┘    └────────┬────────┘                     │
-│                                  │                               │
-└──────────────────────────────────┼──────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     🧠 AI ANALYSIS ENGINE                        │
-│                      (Gemini 2.5 Flash)                          │
-│                                                                  │
-│   ┌──────────────┐  ┌───────────────┐  ┌──────────────────┐    │
-│   │ Answer       │  │ Coverage      │  │ Evidence         │    │
-│   │ Extraction   │  │ Metrics       │  │ Mapping          │    │
-│   │ (Key-Value)  │  │ (Heatmaps)   │  │ (Source Links)   │    │
-│   └──────┬───────┘  └──────┬────────┘  └────────┬─────────┘    │
-│          │                 │                     │               │
-└──────────┼─────────────────┼─────────────────────┼──────────────┘
-           │                 │                     │
-           ▼                 ▼                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    ✅ VERIFICATION LAYER                         │
-│                                                                  │
-│   Post-Retrieval Validation → Word-Match Scoring → Status Tags  │
-│   ✅ Verified    ⚠️ Unverified    ❌ Conflict                    │
-│                                                                  │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      🖥️ USER INTERFACE                           │
-│                                                                  │
-│   Dashboard  │  Compression Studio  │  Audit Lab  │  Analytics  │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-</div>
-
-### Pipeline Flow (Mermaid)
-
 ```mermaid
-graph TB
-    A[📄 Document Upload] --> B[🔪 PDF Extraction & Sanitization]
-    B --> C[📦 Line-Indexed Chunking]
-    C --> D[🗜️ 3-Level Hierarchical Compression]
-    D --> E[🧠 Gemini 2.5 Flash Analysis]
-    E --> F[🎯 Answer Extraction]
-    E --> G[📊 Coverage Heatmaps]
-    E --> H[🔗 Evidence Mapping]
-    F --> I[✅ Verification Layer]
-    G --> I
-    H --> I
-    I --> J[🖥️ Interactive Dashboard]
-    
-    style A fill:#2DB8A1,color:#fff,stroke:#1a8a78
-    style D fill:#FF6F61,color:#fff,stroke:#cc5850
-    style E fill:#8B5CF6,color:#fff,stroke:#6d3fcc
-    style I fill:#F59E0B,color:#fff,stroke:#d97706
-    style J fill:#3178C6,color:#fff,stroke:#2563a8
+flowchart TB
+    subgraph INPUT["📄 DOCUMENT INPUT"]
+        A1[PDF Upload] --> A2[Text Extraction via pdfjs-dist]
+    end
+
+    subgraph PIPELINE["🔪 PROCESSING PIPELINE"]
+        direction LR
+        B1["🔍 PDF Parse\n& Sanitization"] --> B2["🧹 Binary/Control\nChar Removal"] --> B3["✅ Content\nValidation"]
+    end
+
+    subgraph CHUNKING["📦 INTELLIGENT CHUNKING"]
+        direction LR
+        C1["📐 Line-Indexed\nChunking\n(Page:Line Ref)"] --> C2["🗜️ 3-Level\nHierarchical\nCompression"]
+    end
+
+    subgraph AI["🧠 AI ANALYSIS ENGINE — Gemini 2.5 Flash"]
+        direction LR
+        D1["🎯 Answer\nExtraction\n(Key-Value)"]
+        D2["📊 Coverage\nMetrics\n(Heatmaps)"]
+        D3["🔗 Evidence\nMapping\n(Source Links)"]
+    end
+
+    subgraph VERIFY["✅ VERIFICATION LAYER"]
+        E1["Word-Match\nScoring"] --> E2["Semantic\nValidation"] --> E3["Status Tags\n✅ ⚠️ ❌"]
+    end
+
+    subgraph UI["🖥️ USER INTERFACE"]
+        direction LR
+        F1["📊 Dashboard"]
+        F2["📄 Compression\nStudio"]
+        F3["🔍 Audit\nLab"]
+        F4["👻 Ghost\nMode"]
+    end
+
+    INPUT --> PIPELINE --> CHUNKING --> AI
+    D1 & D2 & D3 --> VERIFY --> UI
+
+    style INPUT fill:#0d9488,color:#fff,stroke:#0f766e,stroke-width:2px
+    style PIPELINE fill:#1e3a5f,color:#fff,stroke:#2563eb,stroke-width:2px
+    style CHUNKING fill:#7c3aed,color:#fff,stroke:#6d28d9,stroke-width:2px
+    style AI fill:#dc2626,color:#fff,stroke:#b91c1c,stroke-width:2px
+    style VERIFY fill:#d97706,color:#fff,stroke:#b45309,stroke-width:2px
+    style UI fill:#0284c7,color:#fff,stroke:#0369a1,stroke-width:2px
 ```
 
 ---
