@@ -9,18 +9,17 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![Powered by AI](https://img.shields.io/badge/Powered%20by-AI-FF6F61?style=for-the-badge&logo=openai&logoColor=white)](#)
 [![Team](https://img.shields.io/badge/Team-Avengers-red?style=for-the-badge&logo=marvel&logoColor=white)](#)
+[![Website](https://img.shields.io/badge/Website-anshguptaa.in-2DB8A1?style=for-the-badge&logo=googlechrome&logoColor=white)](https://anshguptaa.in)
 
 <br/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Space+Grotesk&weight=700&size=28&pause=1000&color=2DB8A1&center=true&vCenter=true&multiline=true&width=700&height=80&lines=AI-Powered+Document+Intelligence;Cut+Hallucinations.+Trust+Evidence." alt="Typing SVG" />
+**🧠 AI-Powered Document Intelligence — Cut Hallucinations. Trust Evidence.**
 
 <br/>
 
 > 🔍 **GhostCut** is an AI-powered document compression and retrieval integrity auditing platform that eliminates hallucinations through verified, evidence-backed analysis.
 
 ---
-
-<img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="700">
 
 </div>
 
@@ -115,7 +114,7 @@ graph TB
 | **UI Components** | shadcn/ui, Radix UI Primitives |
 | **State Management** | Zustand, TanStack React Query |
 | **Backend** | Lovable Cloud (Edge Functions) |
-| **AI Engine** | Gemini 2.5 Flash (via Lovable AI) |
+| **AI Engine** | Gemini 2.5 Flash |
 | **Auth** | Cloud Authentication |
 | **Build** | Vite, ESLint |
 
@@ -174,29 +173,9 @@ npm run dev
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Space+Grotesk&weight=600&size=24&pause=1000&color=FF6F61&center=true&vCenter=true&width=435&lines=We+are+Team+Avengers+🦸;Building+the+Future+of+AI+Trust" alt="Team" />
+🦸 **We are Team Avengers — Building the Future of AI Trust**
 
-<br/><br/>
-
-| 🦸 Role | Member |
-|:---:|:---:|
-| **Team Lead** | _Your Name_ |
-| **AI/ML Engineer** | _Member 2_ |
-| **Frontend Developer** | _Member 3_ |
-| **Backend Developer** | _Member 4_ |
-
-</div>
-
----
-
-## 📊 Project Stats
-
-<div align="center">
-
-![GitHub stars](https://img.shields.io/github/stars/your-username/ghostcut?style=social)
-![GitHub forks](https://img.shields.io/github/forks/your-username/ghostcut?style=social)
-![GitHub issues](https://img.shields.io/github/issues/your-username/ghostcut?color=yellow)
-![GitHub last commit](https://img.shields.io/github/last-commit/your-username/ghostcut?color=green)
+🌐 [**anshguptaa.in**](https://anshguptaa.in)
 
 </div>
 
@@ -225,12 +204,12 @@ npm run dev
 
 <br/>
 
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=500&size=16&pause=1000&color=2DB8A1&center=true&vCenter=true&width=500&lines=GhostCut+—+Where+Evidence+Meets+Intelligence;Built+with+❤️+by+Team+Avengers" alt="Footer" />
+**GhostCut — Where Evidence Meets Intelligence**
+
+Built with ❤️ by **Team Avengers** · 🌐 [anshguptaa.in](https://anshguptaa.in)
 
 <br/>
 
 ⭐ **Star this repo if you believe AI should be trustworthy!** ⭐
-
-<img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="700">
 
 </div>
