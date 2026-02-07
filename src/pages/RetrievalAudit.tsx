@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Search, Send, Loader2, Lightbulb } from "lucide-react";
 import { ChunkViewer } from "@/components/ChunkViewer";
 import { ScoreMeter } from "@/components/ScoreMeter";
 import { CoverageHeatmap } from "@/components/CoverageHeatmap";
 import { AuditAlerts } from "@/components/AuditAlerts";
 import { MetricCard } from "@/components/MetricCard";
+import { AnswerExtractionPanel } from "@/components/AnswerExtractionPanel";
 import { useDocumentStore } from "@/stores/documentStore";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -47,6 +48,15 @@ export default function RetrievalAudit() {
       setIsAuditing(false);
     }
   };
+
+  const handleEvidenceClick = useCallback((chunkId: string) => {
+    const el = document.querySelector(`[data-search-id="chunk-${chunkId}-0"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("search-flash");
+      setTimeout(() => el.classList.remove("search-flash"), 1200);
+    }
+  }, []);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -102,12 +112,15 @@ export default function RetrievalAudit() {
       {/* Audit Results */}
       {auditResults && !isAuditing && (
         <div className="space-y-6 animate-slide-up">
-          {/* Score + Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Score + Metrics + Answer */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Score */}
             <div className="flex items-center justify-center p-6 rounded-xl border border-border bg-card shadow-card">
               <ScoreMeter score={auditResults.integrityScore} label="Integrity Score" size="lg" />
             </div>
-            <div className="space-y-4 col-span-2">
+
+            {/* Right: Metrics + Extracted Answer */}
+            <div className="space-y-4 lg:col-span-2">
               <div className="grid grid-cols-2 gap-4">
                 <MetricCard
                   label="Retrieved Chunks"
@@ -120,13 +133,14 @@ export default function RetrievalAudit() {
                   change={`${((auditResults.retrievedChunks.filter(c => c.isRelevant).length / Math.max(auditResults.retrievedChunks.length, 1)) * 100).toFixed(0)}% precision`}
                 />
               </div>
-              {/* Explanation */}
-              <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="text-sm font-medium text-foreground mb-2">Analysis</h3>
-                <p className="text-xs text-secondary-foreground leading-relaxed">
-                  {auditResults.explanation}
-                </p>
-              </div>
+
+              {/* Extracted Answer Panel */}
+              {auditResults.extractedAnswer && (
+                <AnswerExtractionPanel
+                  answer={auditResults.extractedAnswer}
+                  onEvidenceClick={handleEvidenceClick}
+                />
+              )}
             </div>
           </div>
 

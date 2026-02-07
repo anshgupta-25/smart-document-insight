@@ -494,27 +494,65 @@ function computeAbstractionLevel(summaries: any[], sourceText: string): string {
 }
 
 async function handleAudit(query: string, text: string, chunks: any[], apiKey: string) {
-  const systemPrompt = `You are a retrieval integrity auditor. Given a user query and document chunks, analyze retrieval quality using the provided tool.
+  const systemPrompt = `You are an expert document investigator and retrieval integrity auditor. Given a user query and document chunks, you MUST:
 
-Rules:
-- Evaluate each chunk's relevance to the query (assign similarity 0.0-1.0)
-- Mark chunks as relevant (isRelevant: true) or noise (isNoise: true) 
-- Compute an integrity score 0-100 based on coverage, relevance, and completeness
-- Identify missing important evidence
-- Identify noise chunks that are irrelevant
-- Generate coverage data for different query aspects
-- Provide specific improvement suggestions (query rewriting, re-chunking, hybrid retrieval)
-- Explain why the retrieval is sufficient or insufficient`;
+1. EXTRACT THE DIRECT ANSWER to the user's query from the document text. Format it as structured key-value pairs when possible (e.g., "Departure: 11:30 AM", "Date: 8 Oct 2025"). If the answer is a single value, still present it clearly.
+
+2. PROVIDE EVIDENCE for each answer field — specify the exact page number, line range, and chunk ID where the answer was found. Quote the exact source text.
+
+3. PROVIDE A REASONING TRACE — a short 1-2 sentence explanation of HOW you found the answer (e.g., "Extracted from booking details on Page 1, Lines 3-5 containing 'DEL 11:30 Wed, 8 Oct 2025'").
+
+4. COMPUTE REAL COVERAGE — for each query aspect, compute coverage based on:
+   - Token overlap: what percentage of query terms appear in the chunks
+   - Semantic relevance: how semantically related each chunk is to the query aspect
+   - Span coverage: how much of the relevant information is captured
+   Coverage values should reflect actual analysis, NOT be static placeholder values.
+
+5. COMPUTE CONFIDENCE — based on match quality (exact vs partial), source reliability (verified chunk vs inferred), and answer span length. Return as 0-100.
+
+6. Evaluate each chunk's relevance (similarity 0.0-1.0), mark as relevant or noise.
+
+7. NEVER use generic explanations like "contains necessary information" or "retrieval is sufficient". Every explanation must reference specific extracted data.
+
+CRITICAL: All analysis must be dynamic and specific to the actual query and document content.`;
 
   const tools = [
     {
       type: "function",
       function: {
         name: "retrieval_audit",
-        description: "Return retrieval audit results with scores, coverage, and recommendations",
+        description: "Return retrieval audit with extracted answers, evidence linking, and real coverage metrics",
         parameters: {
           type: "object",
           properties: {
+            extractedAnswer: {
+              type: "object",
+              description: "The direct answer extracted from the document",
+              properties: {
+                fields: {
+                  type: "array",
+                  description: "Key-value pairs of extracted answer fields",
+                  items: {
+                    type: "object",
+                    properties: {
+                      key: { type: "string", description: "Field label e.g. 'Departure', 'Flight Number'" },
+                      value: { type: "string", description: "Extracted value e.g. '11:30 AM', 'AI-2989'" },
+                      sourceChunkId: { type: "string", description: "ID of the chunk where this was found" },
+                      pageNumber: { type: "number", description: "Page number where this was found" },
+                      lineRange: { type: "string", description: "Line range e.g. 'Lines 3-5'" },
+                      sourceQuote: { type: "string", description: "Exact quote from source text proving this answer" },
+                    },
+                    required: ["key", "value", "sourceChunkId", "pageNumber", "lineRange", "sourceQuote"],
+                    additionalProperties: false,
+                  },
+                },
+                summary: { type: "string", description: "One-line natural language answer to the query" },
+                confidence: { type: "number", description: "Overall answer confidence 0-100 based on match quality, source reliability, span length" },
+                reasoningTrace: { type: "string", description: "Short 1-2 sentence explanation of how the answer was found, referencing specific pages/lines/text" },
+              },
+              required: ["fields", "summary", "confidence", "reasoningTrace"],
+              additionalProperties: false,
+            },
             retrievedChunks: {
               type: "array",
               items: {
@@ -526,6 +564,7 @@ Rules:
                   isRelevant: { type: "boolean" },
                   isNoise: { type: "boolean" },
                   sourceRef: { type: "string" },
+                  pageNumber: { type: "number" },
                 },
                 required: ["id", "text", "similarity", "isRelevant", "isNoise"],
                 additionalProperties: false,
@@ -534,13 +573,17 @@ Rules:
             integrityScore: { type: "number" },
             coverageData: {
               type: "array",
+              description: "Coverage for each query aspect, computed from token overlap + semantic similarity + span coverage",
               items: {
                 type: "object",
                 properties: {
-                  label: { type: "string" },
-                  coverage: { type: "number" },
+                  label: { type: "string", description: "Query aspect label" },
+                  coverage: { type: "number", description: "Real computed coverage 0-100" },
+                  tokenOverlap: { type: "number", description: "Percentage of query tokens found in chunks 0-100" },
+                  semanticScore: { type: "number", description: "Semantic relevance 0-100" },
+                  spanCoverage: { type: "number", description: "How much of the answer span is covered 0-100" },
                 },
-                required: ["label", "coverage"],
+                required: ["label", "coverage", "tokenOverlap", "semanticScore", "spanCoverage"],
                 additionalProperties: false,
               },
             },
@@ -559,27 +602,27 @@ Rules:
                 additionalProperties: false,
               },
             },
-            explanation: { type: "string" },
+            explanation: { type: "string", description: "Dynamic analysis referencing specific extracted data. NEVER generic." },
             suggestions: {
               type: "array",
               items: { type: "string" },
             },
           },
-          required: ["retrievedChunks", "integrityScore", "coverageData", "alerts", "explanation", "suggestions"],
+          required: ["extractedAnswer", "retrievedChunks", "integrityScore", "coverageData", "alerts", "explanation", "suggestions"],
           additionalProperties: false,
         },
       },
     },
   ];
 
-  const chunksText = chunks.map((c: any, i: number) => `[Chunk ${i + 1}] ${c.text}`).join("\n\n");
+  const chunksText = chunks.map((c: any, i: number) => `[Chunk ${i + 1}, ID: ${c.id}] ${c.text}`).join("\n\n");
 
   const result = await callAI(
     [
       { role: "system", content: systemPrompt },
       {
         role: "user",
-        content: `Query: "${query}"\n\nDocument text excerpt:\n${text.slice(0, 10000)}\n\nRetrieved chunks:\n${chunksText}`,
+        content: `Query: "${query}"\n\nFull document text (for reference):\n${text.slice(0, 15000)}\n\nRetrieved chunks for audit:\n${chunksText}`,
       },
     ],
     apiKey,
