@@ -1,5 +1,8 @@
+import { useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FileDown, Ghost, Shield, Layers, Search, Brain, BarChart3, Eye, Lock, Target, Zap, Globe, Smartphone, Users, Puzzle } from "lucide-react";
+import { FileDown, Ghost, Shield, Layers, Search, Brain, BarChart3, Eye, Lock, Target, Zap, Globe, Smartphone, Users, Puzzle, Loader2 } from "lucide-react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -7,6 +10,54 @@ const fadeUp = {
 };
 
 export default function ProjectReport() {
+  const [exporting, setExporting] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPDF = useCallback(async () => {
+    if (!reportRef.current || exporting) return;
+    setExporting(true);
+
+    try {
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        windowWidth: 900,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth - 20; // 10mm margin each side
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let position = 10; // top margin
+      let remainingHeight = imgHeight;
+
+      // First page
+      pdf.addImage(imgData, "JPEG", 10, position, imgWidth, imgHeight);
+      remainingHeight -= (pdfHeight - 20);
+
+      // Add more pages if needed
+      while (remainingHeight > 0) {
+        position -= (pdfHeight - 20);
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 10, position, imgWidth, imgHeight);
+        remainingHeight -= (pdfHeight - 20);
+      }
+
+      pdf.save("GhostCut_Project_Report.pdf");
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      // Fallback to print
+      window.print();
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting]);
+
   return (
     <div className="min-h-screen bg-white text-gray-900 print:bg-white font-sans">
       {/* Print styles for proper page breaks */}
@@ -19,22 +70,34 @@ export default function ProjectReport() {
           table { page-break-inside: avoid; break-inside: avoid; }
           tr { page-break-inside: avoid; break-inside: avoid; }
           .print-page-break { page-break-before: always; break-before: always; }
-          .print-cover { page-break-after: always; break-after: always; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-          .print-keep-together { page-break-inside: avoid; break-inside: avoid; }
+          .print-cover { page-break-after: always; break-after: always; }
           p, li { orphans: 3; widows: 3; }
           .no-print { display: none !important; }
         }
       `}</style>
-      {/* Print Button */}
+
+      {/* Export Button */}
       <div className="fixed top-6 right-6 z-50 print:hidden">
         <button
-          onClick={() => window.print()}
-          className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all font-semibold"
+          onClick={handleExportPDF}
+          disabled={exporting}
+          className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all font-semibold disabled:opacity-70 disabled:scale-100"
         >
-          <FileDown className="w-5 h-5" />
-          Download PDF
+          {exporting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <FileDown className="w-5 h-5" />
+              Export PDF
+            </>
+          )}
         </button>
       </div>
+
+      <div ref={reportRef}>
 
       {/* ===== COVER PAGE ===== */}
       <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden print:print-cover print:min-h-0 print:py-16">
@@ -435,6 +498,7 @@ Score < 0.5  →  ❌ Conflict`}</pre>
           <p className="text-xs text-gray-400">Built with ❤️ by Team Avengers · anshguptaa.in</p>
           <p className="text-xs text-gray-300 mt-1">© 2026 Team Avengers. All rights reserved.</p>
         </div>
+      </div>
       </div>
     </div>
   );
