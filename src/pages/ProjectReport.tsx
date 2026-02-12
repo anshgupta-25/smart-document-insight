@@ -9,6 +9,22 @@ const fadeUp = {
 export default function ProjectReport() {
   return (
     <div className="min-h-screen bg-white text-gray-900 print:bg-white font-sans">
+      {/* Print styles for proper page breaks */}
+      <style>{`
+        @media print {
+          @page { margin: 1.5cm 1.5cm; size: A4; }
+          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          section, .print-section { page-break-inside: avoid; break-inside: avoid; }
+          h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+          table { page-break-inside: avoid; break-inside: avoid; }
+          tr { page-break-inside: avoid; break-inside: avoid; }
+          .print-page-break { page-break-before: always; break-before: always; }
+          .print-cover { page-break-after: always; break-after: always; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+          .print-keep-together { page-break-inside: avoid; break-inside: avoid; }
+          p, li { orphans: 3; widows: 3; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
       {/* Print Button */}
       <div className="fixed top-6 right-6 z-50 print:hidden">
         <button
@@ -21,7 +37,7 @@ export default function ProjectReport() {
       </div>
 
       {/* ===== COVER PAGE ===== */}
-      <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden print:min-h-0 print:py-20">
+      <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden print:print-cover print:min-h-0 print:py-16">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-[0.03] print:hidden" style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, #0d9488 1px, transparent 0)`,
@@ -104,7 +120,7 @@ export default function ProjectReport() {
         </Section>
 
         {/* PROBLEM STATEMENT */}
-        <Section title="3. Problem Statement" icon={<Shield className="w-5 h-5" />}>
+        <Section title="3. Problem Statement" icon={<Shield className="w-5 h-5" />} pageBreak>
           <ProblemCard
             number="PS-3"
             title="Retrieval Integrity"
@@ -148,7 +164,7 @@ export default function ProjectReport() {
         </Section>
 
         {/* LITERATURE REVIEW */}
-        <Section title="5. Literature Review" icon={<Search className="w-5 h-5" />}>
+        <Section title="5. Literature Review" icon={<Search className="w-5 h-5" />} pageBreak>
           <h4 className="font-semibold text-gray-800 mt-2 mb-2">5.1 Retrieval-Augmented Generation (RAG)</h4>
           <p>Introduced by Lewis et al. (2020) to combine parametric knowledge (LLM weights) with non-parametric knowledge (retrieved documents). Limitations include no verification, no hallucination detection, and no confidence scoring.</p>
 
@@ -178,7 +194,7 @@ export default function ProjectReport() {
         </Section>
 
         {/* SYSTEM ARCHITECTURE */}
-        <Section title="7. System Architecture" icon={<Layers className="w-5 h-5" />}>
+        <Section title="7. System Architecture" icon={<Layers className="w-5 h-5" />} pageBreak>
           <div className="space-y-3 my-4">
             <ArchBlock color="teal" title="📄 DOCUMENT INPUT" items={["PDF / TXT / Markdown Upload", "pdfjs-dist Text Extraction", "Page-Level Markers"]} />
             <div className="flex justify-center"><span className="text-gray-300 text-2xl">↓</span></div>
@@ -207,7 +223,7 @@ export default function ProjectReport() {
         </Section>
 
         {/* MODULE DESCRIPTION */}
-        <Section title="9. Module Description" icon={<Layers className="w-5 h-5" />}>
+        <Section title="9. Module Description" icon={<Layers className="w-5 h-5" />} pageBreak>
           {[
             { title: "9.1 Document Input Module", desc: "Drag-and-drop upload for PDF, TXT, and Markdown files up to 20MB with visual feedback and processing states." },
             { title: "9.2 PDF Extraction Module", desc: "Client-side extraction using pdfjs-dist with multi-stage sanitization: binary detection, control char removal, and quality validation." },
@@ -246,7 +262,7 @@ Score < 0.5  →  ❌ Conflict`}</pre>
         </Section>
 
         {/* KEY FEATURES */}
-        <Section title="11. Key Features" icon={<Zap className="w-5 h-5" />}>
+        <Section title="11. Key Features" icon={<Zap className="w-5 h-5" />} pageBreak>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
               { icon: <Layers className="w-4 h-4" />, title: "Smart Compression", desc: "3-level hierarchical: Executive → Section → Evidence" },
@@ -287,7 +303,7 @@ Score < 0.5  →  ❌ Conflict`}</pre>
         </Section>
 
         {/* TESTING & RESULTS */}
-        <Section title="13. Testing & Results" icon={<BarChart3 className="w-5 h-5" />}>
+        <Section title="13. Testing & Results" icon={<BarChart3 className="w-5 h-5" />} pageBreak>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <h4 className="font-semibold text-gray-800 text-sm mb-3">Test Results</h4>
@@ -363,7 +379,7 @@ Score < 0.5  →  ❌ Conflict`}</pre>
         </Section>
 
         {/* FUTURE SCOPE */}
-        <Section title="15. Future Scope" icon={<Globe className="w-5 h-5" />}>
+        <Section title="15. Future Scope" icon={<Globe className="w-5 h-5" />} pageBreak>
           <div className="space-y-3">
             {[
               { phase: "v1.1", icon: <Globe className="w-4 h-4" />, feature: "Multi-language document support" },
@@ -426,11 +442,11 @@ Score < 0.5  →  ❌ Conflict`}</pre>
 
 /* ===== REUSABLE COMPONENTS ===== */
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon, children, pageBreak = false }: { title: string; icon: React.ReactNode; children: React.ReactNode; pageBreak?: boolean }) {
   return (
     <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-      className="mb-12 print:mb-8 print:break-inside-avoid">
-      <div className="flex items-center gap-3 mb-4">
+      className={`mb-12 print:mb-6 print:break-inside-avoid ${pageBreak ? 'print-page-break' : ''}`}>
+      <div className="flex items-center gap-3 mb-4 print:break-after-avoid">
         <span className="text-teal-500">{icon}</span>
         <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
       </div>
@@ -460,7 +476,7 @@ function KeywordBadges({ keywords }: { keywords: string[] }) {
 
 function ProblemCard({ number, title, question, points }: { number: string; title: string; question: string; points: string[] }) {
   return (
-    <div className="my-4 p-5 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl">
+    <div className="my-4 p-5 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl print:break-inside-avoid">
       <div className="flex items-center gap-2 mb-2">
         <span className="bg-teal-500 text-white px-2.5 py-0.5 rounded text-xs font-bold">{number}</span>
         <h4 className="font-bold text-gray-800">{title}</h4>
@@ -501,7 +517,7 @@ function ArchBlock({ color, title, items }: { color: string; title: string; item
     amber: "from-amber-500 to-amber-600", emerald: "from-emerald-500 to-emerald-600",
   };
   return (
-    <div className={`bg-gradient-to-r ${colors[color]} text-white rounded-xl p-4 shadow-md`}>
+    <div className={`bg-gradient-to-r ${colors[color]} text-white rounded-xl p-4 shadow-md print:break-inside-avoid`}>
       <p className="font-bold text-sm mb-2">{title}</p>
       <div className="flex flex-wrap gap-2">
         {items.map((item, i) => (
