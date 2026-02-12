@@ -17,6 +17,7 @@ import VerifiedProfile from "./pages/VerifiedProfile";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
+import ProjectReport from "./pages/ProjectReport";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/project-report" element={<ProjectReport />} />
 
               {/* Protected routes */}
               <Route
